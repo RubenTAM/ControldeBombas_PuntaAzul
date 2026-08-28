@@ -58,7 +58,7 @@ export default function ControlPanel({ telemetry }) {
   } = telemetry
 
   return (
-    <section className="flex flex-col gap-5 rounded-2xl border border-ink-100 bg-white p-5 shadow-card sm:p-6">
+    <section className="flex h-full flex-col justify-between gap-4 overflow-hidden rounded-2xl border border-ink-100 bg-white p-5 shadow-card sm:p-6">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-ink-500">Control automático</h2>
       </div>

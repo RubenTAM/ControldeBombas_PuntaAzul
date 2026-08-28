@@ -88,8 +88,8 @@ export default function LevelHistoryChart({ telemetry }) {
     })
 
   return (
-    <section className="rounded-2xl border border-ink-100 bg-white p-5 shadow-card sm:p-6">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <section className="flex h-full flex-col overflow-hidden rounded-2xl border border-ink-100 bg-white p-5 shadow-card sm:p-6">
+      <div className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-ink-500">Nivel del tanque</h2>
           <p className="text-xs text-ink-400">Histórico de nivel vs. tiempo</p>
@@ -110,11 +110,12 @@ export default function LevelHistoryChart({ telemetry }) {
         </div>
       </div>
 
-      <div className="relative">
+      <div className="relative min-h-0 flex-1">
         <svg
           ref={svgRef}
           viewBox={`0 0 ${VB_W} ${VB_H}`}
-          className="w-full touch-none"
+          className="h-full w-full touch-none"
+          preserveAspectRatio="xMidYMid meet"
           onMouseMove={handleMove}
           onMouseLeave={() => setHoverIdx(null)}
         >
@@ -178,7 +179,7 @@ export default function LevelHistoryChart({ telemetry }) {
         )}
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[11px] text-ink-400">
+      <div className="mt-3 flex shrink-0 flex-wrap items-center gap-x-5 gap-y-1.5 text-[11px] text-ink-400">
         <LegendDot color="#2a78d6" label="Nivel de tanque" line />
         <LegendDot color="#324879" label="Arranque" dashed />
         <LegendDot color="#0891a8" label="Paro" dashed />

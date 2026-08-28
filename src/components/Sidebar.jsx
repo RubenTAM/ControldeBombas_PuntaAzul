@@ -1,24 +1,6 @@
-import {
-  IconGrid,
-  IconPump,
-  IconTank,
-  IconHistory,
-  IconBell,
-  IconCalendar,
-  IconMap,
-  IconSettings,
-  IconUsers,
-} from '../icons.jsx'
+import { IconGrid, IconSettings, IconUsers } from '../icons.jsx'
 
-const NAV = [
-  { key: 'dashboard', label: 'Dashboard', icon: IconGrid },
-  { key: 'bombas', label: 'Bombas', icon: IconPump },
-  { key: 'tanque', label: 'Tanque', icon: IconTank },
-  { key: 'historicos', label: 'Históricos', icon: IconHistory },
-  { key: 'alarmas', label: 'Alarmas', icon: IconBell, badgeKey: 'alarms' },
-  { key: 'eventos', label: 'Eventos', icon: IconCalendar },
-  { key: 'mapa', label: 'Mapa de red', icon: IconMap },
-]
+const NAV = [{ key: 'dashboard', label: 'Dashboard', icon: IconGrid }]
 
 const FOOT = [
   { key: 'config', label: 'Configuración', icon: IconSettings },
@@ -39,9 +21,6 @@ export default function Sidebar({ active, onNavigate, alarmCount }) {
       </div>
 
       <nav className="mt-2 flex-1 space-y-1 px-3">
-        <p className="px-3 pb-2 pt-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-navy-400">
-          Operación
-        </p>
         {NAV.map((item) => (
           <NavItem
             key={item.key}
@@ -50,13 +29,6 @@ export default function Sidebar({ active, onNavigate, alarmCount }) {
             badge={item.badgeKey === 'alarms' ? alarmCount : 0}
             onClick={() => onNavigate(item.key)}
           />
-        ))}
-
-        <p className="px-3 pb-2 pt-6 text-[10px] font-semibold uppercase tracking-[0.16em] text-navy-400">
-          Administración
-        </p>
-        {FOOT.map((item) => (
-          <NavItem key={item.key} item={item} active={active === item.key} onClick={() => onNavigate(item.key)} />
         ))}
       </nav>
 
@@ -69,6 +41,15 @@ export default function Sidebar({ active, onNavigate, alarmCount }) {
           <p className="text-xs font-semibold text-navy-100">Enlace PLC activo</p>
         </div>
         <p className="mt-1 text-[11px] leading-relaxed text-navy-400">Estación Cabo Viejo · LOGO! 8</p>
+      </div>
+
+      <div className="border-t border-white/[0.06] px-3 py-3">
+        <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-navy-400">
+          Administración
+        </p>
+        {FOOT.map((item) => (
+          <NavItem key={item.key} item={item} active={active === item.key} onClick={() => onNavigate(item.key)} />
+        ))}
       </div>
 
       <div className="border-t border-white/[0.06] px-6 py-4">

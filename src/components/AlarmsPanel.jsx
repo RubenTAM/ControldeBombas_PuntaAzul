@@ -19,8 +19,8 @@ export default function AlarmsPanel({ telemetry }) {
   const { alarms, activeAlarms, acknowledgeAlarm, acknowledgeAll, now } = telemetry
 
   return (
-    <section className="flex flex-col rounded-2xl border border-ink-100 bg-white p-5 shadow-card sm:p-6">
-      <div className="mb-3 flex items-center justify-between">
+    <section className="flex h-full flex-col overflow-hidden rounded-2xl border border-ink-100 bg-white p-5 shadow-card sm:p-6">
+      <div className="mb-3 flex shrink-0 items-center justify-between">
         <div>
           <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-ink-500">Alarmas activas</h2>
           <p className="text-xs text-ink-400">{activeAlarms.length} sin reconocer</p>
@@ -35,7 +35,7 @@ export default function AlarmsPanel({ telemetry }) {
         )}
       </div>
 
-      <div className="scroll-thin -mx-1 max-h-[290px] space-y-1.5 overflow-y-auto px-1">
+      <div className="scroll-thin -mx-1 min-h-0 flex-1 space-y-1.5 overflow-y-auto px-1">
         {alarms.length === 0 && <p className="py-8 text-center text-sm text-ink-300">Sin eventos registrados.</p>}
         {alarms.slice(0, 12).map((a) => {
           const cfg = SEVERITY[a.severity] ?? SEVERITY.warning
