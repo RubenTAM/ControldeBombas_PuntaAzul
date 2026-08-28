@@ -17,10 +17,19 @@ if (!DATABASE_URL) {
   console.warn('[puntaazul-api] DATABASE_URL is not set — did you bind the database component in App Platform?')
 }
 
-const pool = new Pool({
-  connectionString: DATABASE_URL,
-  ssl: DATABASE_URL ? { rejectUnauthorized: false } : false,
-})
+// DigitalOcean's managed Postgres presents a cert from its own CA, which
+// Node doesn't trust by default. Its connection string ships with
+// "?sslmode=require", and letting pg parse that itself upgrades
+// verification to a full CA check that then fails with "self-signed
+// certificate in certificate chain". Strip that query param and set TLS
+// behavior ourselves instead, so there's only one source of truth for it.
+function poolConfig(url) {
+  if (!url) return { ssl: false }
+  const connectionString = url.replace(/([?&])sslmode=[^&]*&?/i, '$1').replace(/[?&]$/, '')
+  return { connectionString, ssl: { rejectUnauthorized: false } }
+}
+
+const pool = new Pool(poolConfig(DATABASE_URL))
 
 async function ensureSchema() {
   await pool.query(`
@@ -55,6 +64,9 @@ const RANGE_TO_INTERVAL = {
 const app = express()
 app.use(cors())
 app.use(express.json())
+
+// App Platform's readiness/liveness checks hit "/" by default.
+app.get('/', (_req, res) => res.json({ service: 'puntaazul-api', status: 'ok' }))
 
 app.get('/api/health', async (_req, res) => {
   try {
