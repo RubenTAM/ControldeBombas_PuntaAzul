@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  @apply bg-navy-50 text-ink-900 antialiased;
+  font-feature-settings: 'ss01' 1;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* thin, quiet scrollbars for the alarm/event lists */
+.scroll-thin::-webkit-scrollbar {
+  width: 6px;
+}
+.scroll-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: theme('colors.ink.200');
+  border-radius: 999px;
+}
+
+/* custom range input (threshold sliders) */
+input[type='range'].thumb-navy {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 999px;
+  background: transparent;
+}
+input[type='range'].thumb-navy::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 3px solid theme('colors.navy.500');
+  box-shadow: 0 1px 4px rgba(11, 18, 32, 0.25);
+  cursor: pointer;
+  margin-top: -6px;
+}
+input[type='range'].thumb-navy::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 3px solid theme('colors.navy.500');
+  box-shadow: 0 1px 4px rgba(11, 18, 32, 0.25);
+  cursor: pointer;
+}
+input[type='range'].thumb-navy::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+}
