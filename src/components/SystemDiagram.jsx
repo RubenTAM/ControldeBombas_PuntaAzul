@@ -10,7 +10,6 @@ export default function SystemDiagram({ telemetry }) {
       <div className="mb-4 flex shrink-0 items-center justify-between">
         <div>
           <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-ink-500">Diagrama general</h2>
-          <p className="text-xs text-ink-400">Cabo Viejo · flujo en tiempo real (simulado)</p>
         </div>
         <span className="rounded-full bg-navy-50 px-3 py-1 text-xs font-semibold text-navy-500">
           {controlMode === 'AUTO' ? 'Control automático' : 'Control manual'}

@@ -1,5 +1,3 @@
-import { IconCrown, IconRepeat } from '../icons.jsx'
-
 function Segmented({ value, options, onChange }) {
   return (
     <div className="flex rounded-lg bg-navy-50 p-1">
@@ -45,20 +43,10 @@ function ThresholdSlider({ label, value, onChange, min, max, accent, hint }) {
 }
 
 export default function ControlPanel({ telemetry }) {
-  const {
-    controlMode,
-    setControlMode,
-    thresholds,
-    setThreshold,
-    leadPump,
-    setLeadPump,
-    alternation,
-    setAlternation,
-    limits,
-  } = telemetry
+  const { controlMode, setControlMode, thresholds, setThreshold, limits } = telemetry
 
   return (
-    <section className="flex h-full flex-col justify-between gap-4 overflow-hidden rounded-2xl border border-ink-100 bg-white p-5 shadow-card sm:p-6">
+    <section className="flex h-full flex-col justify-center gap-6 overflow-hidden rounded-2xl border border-ink-100 bg-white p-5 shadow-card sm:p-6">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-ink-500">Control automático</h2>
       </div>
@@ -91,49 +79,6 @@ export default function ControlPanel({ telemetry }) {
           accent="#0891a8"
           hint={`Detiene las bombas al llegar a ${thresholds.stop}%`}
         />
-      </div>
-
-      <div className="h-px bg-ink-100" />
-
-      <div>
-        <p className="mb-2 text-xs font-semibold text-ink-500">Bomba líder</p>
-        <div className="flex gap-2">
-          {['p1', 'p2'].map((id) => (
-            <button
-              key={id}
-              onClick={() => setLeadPump(id)}
-              className={[
-                'flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-bold transition-colors',
-                leadPump === id
-                  ? 'border-navy-500 bg-navy-50 text-navy-700'
-                  : 'border-ink-100 text-ink-400 hover:border-ink-200',
-              ].join(' ')}
-            >
-              <IconCrown className="h-3.5 w-3.5" /> {id === 'p1' ? 'Bomba 1' : 'Bomba 2'}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between rounded-lg bg-navy-50/60 px-3 py-2.5">
-        <div className="flex items-center gap-2">
-          <IconRepeat className="h-4 w-4 text-navy-500" />
-          <div>
-            <p className="text-xs font-bold text-ink-700">Alternancia</p>
-            <p className="text-[11px] text-ink-400">Turna el arranque entre bombas</p>
-          </div>
-        </div>
-        <button
-          onClick={() => setAlternation(!alternation)}
-          className={['relative h-6 w-11 rounded-full transition-colors', alternation ? 'bg-status-good' : 'bg-ink-200'].join(' ')}
-        >
-          <span
-            className={[
-              'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform',
-              alternation ? 'translate-x-[22px]' : 'translate-x-0.5',
-            ].join(' ')}
-          />
-        </button>
       </div>
     </section>
   )

@@ -32,17 +32,6 @@ export default function Sidebar({ active, onNavigate, alarmCount }) {
         ))}
       </nav>
 
-      <div className="mx-3 mb-4 rounded-xl bg-white/[0.04] px-4 py-3 ring-1 ring-white/[0.06]">
-        <div className="flex items-center gap-2">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-status-good opacity-60" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-status-good" />
-          </span>
-          <p className="text-xs font-semibold text-navy-100">Enlace PLC activo</p>
-        </div>
-        <p className="mt-1 text-[11px] leading-relaxed text-navy-400">Estación Cabo Viejo · LOGO! 8</p>
-      </div>
-
       <div className="border-t border-white/[0.06] px-3 py-3">
         <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-navy-400">
           Administración

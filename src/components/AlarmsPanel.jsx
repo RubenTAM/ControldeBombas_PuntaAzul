@@ -15,8 +15,15 @@ function timeAgo(ts, now) {
   return `hace ${h} h`
 }
 
-export default function AlarmsPanel({ telemetry }) {
-  const { alarms, activeAlarms, acknowledgeAlarm, acknowledgeAll, now } = telemetry
+// Se deja vacío a propósito por ahora — sin alarmas simuladas en pantalla,
+// hasta que definamos el set final. La lógica de telemetría sigue intacta
+// para cuando se vuelva a conectar.
+export default function AlarmsPanel({ telemetry: _telemetry }) {
+  const alarms = []
+  const activeAlarms = []
+  const acknowledgeAlarm = () => {}
+  const acknowledgeAll = () => {}
+  const now = Date.now()
 
   return (
     <section className="flex h-full flex-col overflow-hidden rounded-2xl border border-ink-100 bg-white p-5 shadow-card sm:p-6">

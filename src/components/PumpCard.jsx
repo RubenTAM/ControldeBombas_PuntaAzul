@@ -1,4 +1,4 @@
-import { IconPump, IconCrown, IconAlertTriangle } from '../icons.jsx'
+import { IconCrown, IconAlertTriangle } from '../icons.jsx'
 
 export default function PumpCard({ pump, isLead, controlMode, onToggle, side = 'left' }) {
   const running = pump.running
@@ -14,24 +14,6 @@ export default function PumpCard({ pump, isLead, controlMode, onToggle, side = '
           <IconCrown className="h-2.5 w-2.5" /> Líder
         </span>
       )}
-
-      <div className="relative flex h-14 w-14 items-center justify-center">
-        {running && (
-          <span className="absolute inset-0 rounded-full bg-live-400/40 animate-pulseRing" />
-        )}
-        <div
-          className={[
-            'relative flex h-14 w-14 items-center justify-center rounded-full ring-1 transition-colors',
-            pump.fault
-              ? 'bg-status-criticalBg ring-status-critical/30'
-              : running
-              ? 'bg-live-500 ring-live-400/40'
-              : 'bg-navy-50 ring-ink-100',
-          ].join(' ')}
-        >
-          <IconPump className={['h-6 w-6', pump.fault ? 'text-status-critical' : running ? 'text-white' : 'text-ink-300'].join(' ')} />
-        </div>
-      </div>
 
       <div className="text-center">
         <p className="text-sm font-bold text-ink-900">{pump.label}</p>

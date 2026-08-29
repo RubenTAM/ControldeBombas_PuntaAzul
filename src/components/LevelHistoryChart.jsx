@@ -92,7 +92,6 @@ export default function LevelHistoryChart({ telemetry }) {
       <div className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-ink-500">Nivel del tanque</h2>
-          <p className="text-xs text-ink-400">Histórico de nivel vs. tiempo</p>
         </div>
         <div className="flex rounded-lg bg-navy-50 p-1">
           {RANGES.map((r) => (

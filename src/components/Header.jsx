@@ -9,7 +9,6 @@ export default function Header({ alarmCount, onMenu }) {
         </button>
         <div>
           <h1 className="font-sans text-xl font-bold tracking-tight text-ink-900">Dashboard</h1>
-          <p className="text-sm text-ink-400">Estación Cabo Viejo · Sistema de bombeo</p>
         </div>
       </div>
 
