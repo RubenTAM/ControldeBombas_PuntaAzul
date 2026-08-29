@@ -4,12 +4,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 // Simulated telemetry engine for the pumping-station dashboard.
 // No backend yet — this stands in for the future LOGO!/MQTT feed so the
 // visualization and controls can be demoed end-to-end.
+//
+// Each pump has its OWN control mode (AUTO | MANUAL) — there is no single
+// system-wide mode and no "lead pump" concept. A pump in AUTO starts/stops
+// itself against the shared tank thresholds; a pump in MANUAL only moves
+// when the operator toggles it.
 // ---------------------------------------------------------------------------
 
 const TANK_CAPACITY_M3 = 18.5
 const HH_LIMIT = 95 // fixed high-high alarm
 const LL_LIMIT = 15 // fixed low-low alarm
 const TICK_MS = 1400
+const PUMP_IDS = ['p1', 'p2']
 
 let uid = 1
 const nextId = () => `evt-${Date.now()}-${uid++}`
@@ -43,16 +49,13 @@ const ALARM_LIBRARY = [
 ]
 
 const initialPumps = {
-  p1: { id: 'p1', label: 'Bomba 1', running: true, fault: false, hours: 128.6 },
-  p2: { id: 'p2', label: 'Bomba 2', running: false, fault: false, hours: 96.3 },
+  p1: { id: 'p1', label: 'Bomba 1', running: true, fault: false, hours: 128.6, mode: 'AUTO' },
+  p2: { id: 'p2', label: 'Bomba 2', running: false, fault: false, hours: 96.3, mode: 'AUTO' },
 }
 
 export function useTelemetry() {
   const [level, setLevel] = useState(73)
   const [thresholds, setThresholds] = useState({ start: 40, stop: 85 })
-  const [controlMode, setControlMode] = useState('AUTO') // AUTO | MANUAL
-  const [leadPump, setLeadPump] = useState('p1')
-  const [alternation, setAlternation] = useState(true)
   const [pumps, setPumps] = useState(initialPumps)
   const [alarms, setAlarms] = useState(() => [
     {
@@ -69,7 +72,6 @@ export function useTelemetry() {
 
   const historyRef = useRef(buildSeries(144, 24 * 3_600_000, Date.now()))
   const [history, setHistory] = useState(historyRef.current)
-  const cycleRef = useRef({ startedBy: 'p1' })
 
   const setThreshold = useCallback((key, value) => {
     setThresholds((prev) => {
@@ -92,6 +94,11 @@ export function useTelemetry() {
     setPumps((prev) => ({ ...prev, [id]: { ...prev[id], running } }))
   }, [])
 
+  // each pump switches between AUTO and MANUAL independently of the other
+  const setPumpMode = useCallback((id, mode) => {
+    setPumps((prev) => ({ ...prev, [id]: { ...prev[id], mode } }))
+  }, [])
+
   const pushAlarm = useCallback((partial) => {
     setAlarms((prev) => [
       { id: nextId(), time: Date.now(), acknowledged: false, ...partial },
@@ -101,12 +108,6 @@ export function useTelemetry() {
 
   const crossedHH = useRef(false)
   const crossedLL = useRef(false)
-
-  // keep the alternation cycle in sync with whichever pump the operator
-  // just picked as lead, so the selector always reflects who starts next
-  useEffect(() => {
-    cycleRef.current.startedBy = leadPump
-  }, [leadPump])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -164,29 +165,37 @@ export function useTelemetry() {
     }
   }, [connected])
 
-  // automatic start/stop control loop + running-hours accrual
+  // automatic start/stop control loop — runs independently per pump.
+  // Any pump in AUTO starts when the level drops to the arranque setpoint
+  // and stops when it reaches the paro setpoint; a pump in MANUAL is left
+  // alone here and only responds to the operator's button.
   useEffect(() => {
-    if (controlMode !== 'AUTO') return
     if (level <= thresholds.start) {
       setPumps((prev) => {
-        const lead = alternation ? cycleRef.current.startedBy : leadPump
-        if (prev[lead].running) return prev
-        return { ...prev, [lead]: { ...prev[lead], running: true } }
+        let changed = false
+        const next = { ...prev }
+        for (const id of PUMP_IDS) {
+          if (next[id].mode === 'AUTO' && !next[id].running) {
+            next[id] = { ...next[id], running: true }
+            changed = true
+          }
+        }
+        return changed ? next : prev
       })
     } else if (level >= thresholds.stop) {
       setPumps((prev) => {
-        if (!prev.p1.running && !prev.p2.running) return prev
-        if (alternation) {
-          cycleRef.current.startedBy = cycleRef.current.startedBy === 'p1' ? 'p2' : 'p1'
+        let changed = false
+        const next = { ...prev }
+        for (const id of PUMP_IDS) {
+          if (next[id].mode === 'AUTO' && next[id].running) {
+            next[id] = { ...next[id], running: false }
+            changed = true
+          }
         }
-        return {
-          p1: { ...prev.p1, running: false },
-          p2: { ...prev.p2, running: false },
-        }
+        return changed ? next : prev
       })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [level, controlMode, thresholds.start, thresholds.stop, alternation])
+  }, [level, thresholds.start, thresholds.stop, pumps.p1.mode, pumps.p2.mode])
 
   // accrue operating hours for whichever pump(s) are running
   useEffect(() => {
@@ -209,14 +218,9 @@ export function useTelemetry() {
     limits: { hh: HH_LIMIT, ll: LL_LIMIT },
     thresholds,
     setThreshold,
-    controlMode,
-    setControlMode,
-    leadPump,
-    setLeadPump,
-    alternation,
-    setAlternation,
     pumps,
     setPumpRunning,
+    setPumpMode,
     alarms,
     activeAlarms,
     acknowledgeAlarm,

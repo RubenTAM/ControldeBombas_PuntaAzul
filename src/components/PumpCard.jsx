@@ -1,6 +1,6 @@
-import { IconCrown, IconAlertTriangle } from '../icons.jsx'
+import { IconAlertTriangle } from '../icons.jsx'
 
-export default function PumpCard({ pump, isLead, controlMode, onToggle, side = 'left' }) {
+export default function PumpCard({ pump, onToggle }) {
   const running = pump.running
   return (
     <div
@@ -9,12 +9,6 @@ export default function PumpCard({ pump, isLead, controlMode, onToggle, side = '
         running ? 'border-live-400/40' : 'border-ink-100',
       ].join(' ')}
     >
-      {isLead && (
-        <span className="absolute -top-2.5 flex items-center gap-1 rounded-full bg-navy-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
-          <IconCrown className="h-2.5 w-2.5" /> Líder
-        </span>
-      )}
-
       <div className="text-center">
         <p className="text-sm font-bold text-ink-900">{pump.label}</p>
         <p
@@ -28,7 +22,7 @@ export default function PumpCard({ pump, isLead, controlMode, onToggle, side = '
       </div>
 
       <div className="flex items-center gap-1.5 rounded-full bg-navy-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-navy-500">
-        {controlMode}
+        {pump.mode}
       </div>
 
       <div className="w-full rounded-lg bg-navy-50/60 px-3 py-2 text-center">
@@ -36,7 +30,7 @@ export default function PumpCard({ pump, isLead, controlMode, onToggle, side = '
         <p className="text-[10px] text-ink-400">Horas de operación</p>
       </div>
 
-      {controlMode === 'MANUAL' && (
+      {pump.mode === 'MANUAL' && (
         <button
           onClick={() => onToggle(pump.id, !running)}
           className={[

@@ -42,8 +42,24 @@ function ThresholdSlider({ label, value, onChange, min, max, accent, hint }) {
   )
 }
 
+function PumpModeRow({ pump, onSetMode }) {
+  return (
+    <div>
+      <p className="mb-1.5 text-xs font-semibold text-ink-500">{pump.label}</p>
+      <Segmented
+        value={pump.mode}
+        onChange={(mode) => onSetMode(pump.id, mode)}
+        options={[
+          { value: 'AUTO', label: 'Automático' },
+          { value: 'MANUAL', label: 'Manual' },
+        ]}
+      />
+    </div>
+  )
+}
+
 export default function ControlPanel({ telemetry }) {
-  const { controlMode, setControlMode, thresholds, setThreshold, limits } = telemetry
+  const { pumps, setPumpMode, thresholds, setThreshold, limits } = telemetry
 
   return (
     <section className="flex h-full flex-col justify-center gap-6 overflow-hidden rounded-2xl border border-ink-100 bg-white p-5 shadow-card sm:p-6">
@@ -51,14 +67,12 @@ export default function ControlPanel({ telemetry }) {
         <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-ink-500">Control automático</h2>
       </div>
 
-      <Segmented
-        value={controlMode}
-        onChange={setControlMode}
-        options={[
-          { value: 'AUTO', label: 'Automático' },
-          { value: 'MANUAL', label: 'Manual' },
-        ]}
-      />
+      <div className="space-y-4">
+        <PumpModeRow pump={pumps.p1} onSetMode={setPumpMode} />
+        <PumpModeRow pump={pumps.p2} onSetMode={setPumpMode} />
+      </div>
+
+      <div className="h-px bg-ink-100" />
 
       <div className="space-y-5">
         <ThresholdSlider
@@ -68,7 +82,7 @@ export default function ControlPanel({ telemetry }) {
           min={limits.ll + 2}
           max={thresholds.stop - 5}
           accent="#324879"
-          hint={`Arranca la bomba líder al bajar de ${thresholds.start}%`}
+          hint={`Arranca las bombas en automático al bajar de ${thresholds.start}%`}
         />
         <ThresholdSlider
           label="Paro (nivel alto)"
@@ -77,7 +91,7 @@ export default function ControlPanel({ telemetry }) {
           min={thresholds.start + 5}
           max={limits.hh - 2}
           accent="#0891a8"
-          hint={`Detiene las bombas al llegar a ${thresholds.stop}%`}
+          hint={`Detiene las bombas en automático al llegar a ${thresholds.stop}%`}
         />
       </div>
     </section>
