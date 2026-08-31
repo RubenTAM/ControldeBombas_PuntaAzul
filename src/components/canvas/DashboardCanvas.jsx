@@ -53,9 +53,23 @@ export default function DashboardCanvas({ telemetry, canvas }) {
     setOpenPicker(null)
   }
 
+  // How much bigger/smaller the source widget currently is than the size
+  // its own geometry (tube thickness, flange, etc.) was authored at — so
+  // a piece attached from a resized-up tank or pipe comes out at the same
+  // proportions as the flange it's actually attaching to, instead of
+  // always defaulting to its own base size.
+  const scaleOfSource = (widgetId) => {
+    const source = widgets.find((w) => w.id === widgetId)
+    const sourceDef = source && WIDGET_REGISTRY[source.type]
+    if (!source || !sourceDef) return 1
+    return source.h / sourceDef.defaultSize.h
+  }
+
   const handleAttach = (port, type) => {
     const def = WIDGET_REGISTRY[type]
-    const transform = placeAttached(port, def.defaultSize, def.ports[0])
+    const scale = scaleOfSource(port.widgetId)
+    const size = { w: Math.round(def.defaultSize.w * scale), h: Math.round(def.defaultSize.h * scale) }
+    const transform = placeAttached(port, size, def.ports[0])
     addWidgetAt(type, transform.x, transform.y, { w: transform.w, h: transform.h }, def.defaultConfig, transform.rotation)
     setOpenPicker(null)
   }
