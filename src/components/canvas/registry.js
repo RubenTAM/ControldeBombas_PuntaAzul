@@ -15,6 +15,14 @@ import { IconPump, IconTank, IconBars, IconToggle, IconPipeStraight, IconPipeElb
 // and `dir` is the direction pipe extends outward from that port (degrees,
 // 0 = east, 90 = south, 180 = west, 270 = north). Port index 0 is always
 // treated as the "entry" side when a new piece is attached onto it.
+//
+// Every pipe piece (straight, elbow, tee) shares one drawing system so
+// chained pieces line up exactly: a 16-unit tube diameter and a 24-unit
+// flange span, with each flange drawn flush against its own viewBox edge
+// at the same fx/fy the port declares. The straight pipe's viewBox height
+// (24) matches its fixed rendered height exactly — no vertical squish —
+// and the elbow/tee use a square 72x72 viewBox at 1:1 scale, so all three
+// read as the same pipe thickness regardless of length or rotation.
 export const WIDGET_REGISTRY = {
   pump: {
     label: 'Bomba',
@@ -32,15 +40,18 @@ export const WIDGET_REGISTRY = {
     icon: IconTank,
     Component: TankWidget,
     defaultConfig: {},
-    defaultSize: { w: 220, h: 320 },
+    // matches TankVisual's own viewBox (220x300) exactly at the default
+    // size, so there's no letterboxing and the outlet port below lines up
+    // pixel-for-pixel; resizing non-proportionally can still shift it
+    // slightly, a small manual nudge in that case is normal.
+    defaultSize: { w: 220, h: 300 },
     minW: 140,
-    minH: 200,
+    minH: 190,
     resizeAxis: 'both',
     rotatable: false,
-    // outlet flange at the bottom-center of the tank drawing — approximate
-    // (the SVG can letterbox a little at very different aspect ratios), a
-    // small manual nudge after resizing the tank is normal.
-    ports: [{ fx: 0.5, fy: 0.87, dir: 90 }],
+    // outlet flange at the bottom-center of the tank drawing, flush with
+    // its bottom edge (see TankVisual.jsx's outlet flange rect)
+    ports: [{ fx: 0.5, fy: 284 / 300, dir: 90 }],
   },
   levelbar: {
     label: 'Barra de nivel',
@@ -69,9 +80,9 @@ export const WIDGET_REGISTRY = {
     icon: IconPipeStraight,
     Component: PipeStraightWidget,
     defaultConfig: {},
-    defaultSize: { w: 140, h: 28 },
+    defaultSize: { w: 140, h: 24 },
     minW: 40,
-    minH: 20,
+    minH: 24,
     resizeAxis: 'width',
     rotatable: true,
     bare: true,
@@ -85,16 +96,16 @@ export const WIDGET_REGISTRY = {
     icon: IconPipeElbow,
     Component: PipeElbowWidget,
     defaultConfig: {},
-    defaultSize: { w: 60, h: 60 },
-    minW: 40,
-    minH: 40,
+    defaultSize: { w: 72, h: 72 },
+    minW: 56,
+    minH: 56,
     resizeAxis: 'none',
     rotatable: true,
     bare: true,
-    // top opening, then right opening (matches PipeElbowWidget's drawing)
+    // top opening, then right opening (matches PipeElbowWidget's curve)
     ports: [
-      { fx: 28 / 60, fy: 0, dir: 270 },
-      { fx: 1, fy: 28 / 60, dir: 0 },
+      { fx: 28 / 72, fy: 0, dir: 270 },
+      { fx: 1, fy: 48 / 72, dir: 0 },
     ],
   },
   'pipe-tee': {
@@ -102,9 +113,9 @@ export const WIDGET_REGISTRY = {
     icon: IconPipeTee,
     Component: PipeTeeWidget,
     defaultConfig: {},
-    defaultSize: { w: 64, h: 64 },
-    minW: 44,
-    minH: 44,
+    defaultSize: { w: 72, h: 72 },
+    minW: 56,
+    minH: 56,
     resizeAxis: 'none',
     rotatable: true,
     bare: true,

@@ -75,11 +75,15 @@ export default function TankVisual({ level, volume, capacity }) {
         <path d={bodyOutline} fill="none" stroke="#c7ccdb" strokeWidth={2} />
         <ellipse cx={cx} cy={TOP_Y} rx={RX} ry={RY} fill="none" stroke="#c7ccdb" strokeWidth={2} />
 
-        {/* outlet flange — anchor point for connecting pipe widgets */}
-        <rect x={cx - 7} y={BOTTOM_Y - 6} width={14} height={26} fill="url(#outletStub)" />
-        <rect x={cx - 13} y={BOTTOM_Y + 16} width={26} height={8} rx={2} fill="url(#outletFlange)" />
-        <circle cx={cx - 9} cy={BOTTOM_Y + 20} r={1.6} fill="#2b303c" />
-        <circle cx={cx + 9} cy={BOTTOM_Y + 20} r={1.6} fill="#2b303c" />
+        {/* outlet flange — anchor point for connecting pipe widgets.
+            Same 16-unit tube diameter / 24-unit flange span as every pipe
+            piece (see registry.js), flush with the flange's own bottom
+            edge (y = BOTTOM_Y + 26) so the tank's port lines up exactly
+            with the first attached piece, no gap or overlap. */}
+        <rect x={cx - 8} y={BOTTOM_Y} width={16} height={20} fill="url(#outletStub)" />
+        <rect x={cx - 12} y={BOTTOM_Y + 20} width={24} height={6} rx={1.5} fill="url(#outletFlange)" />
+        <circle cx={cx - 8} cy={BOTTOM_Y + 23} r={1.3} fill="#2b303c" />
+        <circle cx={cx + 8} cy={BOTTOM_Y + 23} r={1.3} fill="#2b303c" />
 
         {/* % + volume readout, drawn in the SVG so it scales with the tank */}
         <text x={cx} y={148} textAnchor="middle" className="font-mono text-[34px] font-bold" fill="#0b1220">

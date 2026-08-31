@@ -2,9 +2,14 @@
 // with bolts), purely visual/structural for now (no MQTT binding). Resizes
 // along its own length (see registry.js resizeAxis: 'width') and rotates
 // freely so it can point in any direction.
+//
+// Shares the same 16-unit tube diameter and 24-unit flange span as the
+// elbow and tee pieces, and the viewBox height matches the widget's fixed
+// rendered height exactly (24) so there is no vertical squish — this is
+// what keeps every piece the same visible thickness when chained together.
 export default function PipeStraightWidget() {
   return (
-    <svg viewBox="0 0 200 40" preserveAspectRatio="none" className="h-full w-full overflow-visible">
+    <svg viewBox="0 0 100 24" preserveAspectRatio="none" className="h-full w-full overflow-visible">
       <defs>
         <linearGradient id="pipeBody" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#7c8598" />
@@ -21,13 +26,15 @@ export default function PipeStraightWidget() {
         </linearGradient>
       </defs>
 
-      <rect x="9" y="5" width="182" height="30" rx="5" fill="url(#pipeBody)" />
+      {/* tube runs full length; flanges are drawn on top at each end so
+          there is never a sub-pixel gap between tube and flange */}
+      <rect x="0" y="4" width="100" height="16" fill="url(#pipeBody)" />
 
-      {[9, 191].map((cx) => (
-        <g key={cx}>
-          <rect x={cx - 4.5} y={0} width="9" height="40" rx="2" fill="url(#pipeFlange)" />
-          <circle cx={cx} cy={9} r="1.4" fill="#2b303c" />
-          <circle cx={cx} cy={31} r="1.4" fill="#2b303c" />
+      {[0, 94].map((x) => (
+        <g key={x}>
+          <rect x={x} y={0} width="6" height="24" rx="1.5" fill="url(#pipeFlange)" />
+          <circle cx={x + 3} cy={6} r="1.3" fill="#2b303c" />
+          <circle cx={x + 3} cy={18} r="1.3" fill="#2b303c" />
         </g>
       ))}
     </svg>
