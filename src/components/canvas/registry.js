@@ -49,6 +49,12 @@ export const WIDGET_REGISTRY = {
     minH: 190,
     resizeAxis: 'both',
     rotatable: false,
+    // bare (no WidgetShell card padding/header) so the SVG fills the
+    // widget's box exactly edge-to-edge — the tank draws its own
+    // card-style background instead. This is what keeps the outlet port
+    // fraction below pixel-accurate: with a padded card, the port math
+    // would land inside the padding instead of on the actual flange.
+    bare: true,
     // outlet flange at the bottom-center of the tank drawing, flush with
     // its bottom edge (see TankVisual.jsx's outlet flange rect)
     ports: [{ fx: 0.5, fy: 284 / 300, dir: 90 }],
