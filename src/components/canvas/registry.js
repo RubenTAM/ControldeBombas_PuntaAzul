@@ -9,7 +9,12 @@ import { IconPump, IconTank, IconBars, IconToggle, IconPipeStraight, IconPipeElb
 
 // Single source of truth for every placeable widget: how it renders, its
 // default footprint, and how it can be resized/rotated on the canvas.
-// Adding a new widget type to the platform means adding one entry here.
+//
+// `ports` (optional) describes connection points for the pipe-chain "+"
+// builder: fx/fy are fractions (0..1) of the widget's own w/h at rotation 0,
+// and `dir` is the direction pipe extends outward from that port (degrees,
+// 0 = east, 90 = south, 180 = west, 270 = north). Port index 0 is always
+// treated as the "entry" side when a new piece is attached onto it.
 export const WIDGET_REGISTRY = {
   pump: {
     label: 'Bomba',
@@ -32,6 +37,10 @@ export const WIDGET_REGISTRY = {
     minH: 200,
     resizeAxis: 'both',
     rotatable: false,
+    // outlet flange at the bottom-center of the tank drawing — approximate
+    // (the SVG can letterbox a little at very different aspect ratios), a
+    // small manual nudge after resizing the tank is normal.
+    ports: [{ fx: 0.5, fy: 0.87, dir: 90 }],
   },
   levelbar: {
     label: 'Barra de nivel',
@@ -65,6 +74,11 @@ export const WIDGET_REGISTRY = {
     minH: 20,
     resizeAxis: 'width',
     rotatable: true,
+    bare: true,
+    ports: [
+      { fx: 0, fy: 0.5, dir: 180 },
+      { fx: 1, fy: 0.5, dir: 0 },
+    ],
   },
   'pipe-elbow': {
     label: 'Codo 90°',
@@ -76,6 +90,12 @@ export const WIDGET_REGISTRY = {
     minH: 40,
     resizeAxis: 'none',
     rotatable: true,
+    bare: true,
+    // top opening, then right opening (matches PipeElbowWidget's drawing)
+    ports: [
+      { fx: 28 / 60, fy: 0, dir: 270 },
+      { fx: 1, fy: 28 / 60, dir: 0 },
+    ],
   },
   'pipe-tee': {
     label: 'Te',
@@ -87,6 +107,12 @@ export const WIDGET_REGISTRY = {
     minH: 44,
     resizeAxis: 'none',
     rotatable: true,
+    bare: true,
+    ports: [
+      { fx: 0, fy: 0.5, dir: 180 },
+      { fx: 1, fy: 0.5, dir: 0 },
+      { fx: 0.5, fy: 1, dir: 90 },
+    ],
   },
 }
 

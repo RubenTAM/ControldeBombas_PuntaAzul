@@ -31,19 +31,21 @@ export function useCanvas() {
     }
   }, [widgets])
 
-  // places a new widget instance with its top-left corner at (x, y)
-  const addWidgetAt = useCallback((type, x, y, size, config = {}) => {
+  // places a new widget instance with its top-left corner at (x, y); an
+  // optional rotation is used by the pipe-chain "+" builder so a new piece
+  // can be dropped in already pointing the right way
+  const addWidgetAt = useCallback((type, x, y, size, config = {}, rotation = 0) => {
     setWidgets((prev) => [
       ...prev,
       {
         id: nextId(),
         type,
         config,
-        x: Math.max(0, Math.round(x)),
-        y: Math.max(0, Math.round(y)),
+        x: Math.round(x),
+        y: Math.round(y),
         w: size.w,
         h: size.h,
-        rotation: 0,
+        rotation,
       },
     ])
   }, [])
