@@ -1,6 +1,11 @@
 // Cylindrical tank rendered in SVG: animated liquid fill with a scrolling
 // wave surface, plus reference lines for the fixed safety limits (HH/LL)
 // and the operator-adjustable control setpoints (arranque/paro).
+//
+// Sized entirely by its container (h-full w-full + viewBox) so it can be
+// made bigger/smaller from the canvas resize handle — the % and volume
+// readout live inside the SVG itself for the same reason, instead of an
+// absolutely-positioned HTML overlay tuned to one fixed pixel size.
 
 const VB_W = 220
 const VB_H = 300
@@ -51,8 +56,8 @@ export default function TankVisual({ level, thresholds, limits, volume, capacity
   const clipId = 'tank-body-clip'
 
   return (
-    <div className="relative flex flex-col items-center">
-      <svg viewBox={`0 0 ${VB_W} ${VB_H}`} className="h-[280px] w-[220px] overflow-visible">
+    <div className="flex h-full w-full flex-col items-center">
+      <svg viewBox={`0 0 ${VB_W} ${VB_H}`} className="min-h-0 w-full flex-1 overflow-visible" preserveAspectRatio="xMidYMid meet">
         <defs>
           <clipPath id={clipId}>
             <path d={bodyClip} />
@@ -86,18 +91,17 @@ export default function TankVisual({ level, thresholds, limits, volume, capacity
         {/* outline on top so fill + markers sit underneath the rim */}
         <path d={bodyOutline} fill="none" stroke="#c7ccdb" strokeWidth={2} />
         <ellipse cx={VB_W / 2} cy={TOP_Y} rx={RX} ry={RY} fill="none" stroke="#c7ccdb" strokeWidth={2} />
+
+        {/* % + volume readout, drawn in the SVG so it scales with the tank */}
+        <text x={VB_W / 2} y={148} textAnchor="middle" className="font-mono text-[34px] font-bold" fill="#0b1220">
+          {level.toFixed(0)}%
+        </text>
+        <text x={VB_W / 2} y={170} textAnchor="middle" className="font-mono text-[12px] font-medium" fill="#324879">
+          {volume.toFixed(1)} / {capacity.toFixed(1)} m³
+        </text>
       </svg>
 
-      <div className="pointer-events-none absolute inset-x-0 top-[92px] flex flex-col items-center">
-        <span className="font-mono text-[34px] font-bold leading-none tabular-nums text-navy-900 drop-shadow-sm">
-          {level.toFixed(0)}%
-        </span>
-        <span className="mt-1 font-mono text-xs font-medium tabular-nums text-navy-500">
-          {volume.toFixed(1)} / {capacity.toFixed(1)} m³
-        </span>
-      </div>
-
-      <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-ink-400">Tanque principal</p>
+      <p className="shrink-0 pt-1 text-xs font-semibold uppercase tracking-[0.14em] text-ink-400">Tanque principal</p>
     </div>
   )
 }

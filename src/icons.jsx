@@ -230,3 +230,22 @@ export const IconLayoutBoard = ({ className }) => (
     <path d="M3.5 9.5h17" strokeDasharray="1.5 2.2" />
   </Svg>
 )
+
+export const IconPipeStraight = ({ className }) => (
+  <Svg className={className}>
+    <path d="M3 12h18" strokeWidth="3.2" />
+  </Svg>
+)
+
+export const IconPipeElbow = ({ className }) => (
+  <Svg className={className}>
+    <path d="M8 3v9a4 4 0 0 0 4 4h9" strokeWidth="3.2" />
+  </Svg>
+)
+
+export const IconRotate = ({ className }) => (
+  <Svg className={className}>
+    <path d="M4 12a8 8 0 1 1 2.6 5.9" />
+    <path d="M4 17.5V12h5.5" />
+  </Svg>
+)

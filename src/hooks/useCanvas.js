@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 // refresh. This is a per-browser convenience for now — once there's a
 // backend for dashboard definitions, this is the hook that would read/write
 // there instead.
-const STORAGE_KEY = 'puntaazul-canvas-v1'
+const STORAGE_KEY = 'puntaazul-canvas-v2'
 
 function loadInitial() {
   try {
@@ -31,8 +31,21 @@ export function useCanvas() {
     }
   }, [widgets])
 
-  const addWidget = useCallback((type, config = {}) => {
-    setWidgets((prev) => [...prev, { id: nextId(), type, config }])
+  // places a new widget instance with its top-left corner at (x, y)
+  const addWidgetAt = useCallback((type, x, y, size, config = {}) => {
+    setWidgets((prev) => [
+      ...prev,
+      {
+        id: nextId(),
+        type,
+        config,
+        x: Math.max(0, Math.round(x)),
+        y: Math.max(0, Math.round(y)),
+        w: size.w,
+        h: size.h,
+        rotation: 0,
+      },
+    ])
   }, [])
 
   const removeWidget = useCallback((id) => {
@@ -43,17 +56,32 @@ export function useCanvas() {
     setWidgets((prev) => prev.map((w) => (w.id === id ? { ...w, config: { ...w.config, ...patch } } : w)))
   }, [])
 
-  const moveWidget = useCallback((dragId, dropId) => {
+  // patch is any of {x, y, w, h, rotation} — used by move/resize/rotate drags
+  const updateTransform = useCallback((id, patch) => {
+    setWidgets((prev) => prev.map((w) => (w.id === id ? { ...w, ...patch } : w)))
+  }, [])
+
+  // re-stacks a widget to the top (drawn last) so it sits above overlapping
+  // pieces while it's being dragged/resized/rotated
+  const bringToFront = useCallback((id) => {
     setWidgets((prev) => {
-      const from = prev.findIndex((w) => w.id === dragId)
-      const to = prev.findIndex((w) => w.id === dropId)
-      if (from === -1 || to === -1 || from === to) return prev
+      const idx = prev.findIndex((w) => w.id === id)
+      if (idx === -1 || idx === prev.length - 1) return prev
       const next = [...prev]
-      const [moved] = next.splice(from, 1)
-      next.splice(to, 0, moved)
+      const [item] = next.splice(idx, 1)
+      next.push(item)
       return next
     })
   }, [])
 
-  return { widgets, editMode, setEditMode, addWidget, removeWidget, updateWidgetConfig, moveWidget }
+  return {
+    widgets,
+    editMode,
+    setEditMode,
+    addWidgetAt,
+    removeWidget,
+    updateWidgetConfig,
+    updateTransform,
+    bringToFront,
+  }
 }

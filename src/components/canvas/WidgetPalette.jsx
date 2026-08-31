@@ -1,15 +1,9 @@
-import { IconPump, IconTank, IconBars, IconToggle } from '../../icons.jsx'
-
-export const WIDGET_CATALOG = [
-  { type: 'pump', label: 'Bomba', icon: IconPump },
-  { type: 'tank', label: 'Tanque de nivel', icon: IconTank },
-  { type: 'levelbar', label: 'Barra de nivel', icon: IconBars },
-  { type: 'modeselect', label: 'Selector Auto/Manual', icon: IconToggle },
-]
+import { WIDGET_CATALOG } from './registry.js'
 
 // Palette of draggable widget "chips". Dropping one on the canvas (handled
-// in DashboardCanvas) adds an instance. This is the seed catalog — more
-// widget types (válvulas, caudalímetros, alarmas, etc.) get added here.
+// in DashboardCanvas) adds an instance at the exact drop point. This is the
+// seed catalog — more widget types (válvulas, caudalímetros, alarmas, etc.)
+// get added in registry.js.
 export default function WidgetPalette() {
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-2xl border border-dashed border-navy-200 bg-navy-50/40 p-3">
