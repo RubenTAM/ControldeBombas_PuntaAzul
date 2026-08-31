@@ -199,3 +199,34 @@ export const IconCrown = ({ className }) => (
     <path d="M4 17.5h16M4.5 17.5 3 8.3l4.8 3.4L12 5l4.2 6.7 4.8-3.4-1.5 9.2Z" strokeLinejoin="round" />
   </Svg>
 )
+
+export const IconGrip = ({ className }) => (
+  <Svg className={className}>
+    <circle cx="9" cy="6" r="0.9" fill="currentColor" stroke="none" />
+    <circle cx="9" cy="12" r="0.9" fill="currentColor" stroke="none" />
+    <circle cx="9" cy="18" r="0.9" fill="currentColor" stroke="none" />
+    <circle cx="15" cy="6" r="0.9" fill="currentColor" stroke="none" />
+    <circle cx="15" cy="12" r="0.9" fill="currentColor" stroke="none" />
+    <circle cx="15" cy="18" r="0.9" fill="currentColor" stroke="none" />
+  </Svg>
+)
+
+export const IconToggle = ({ className }) => (
+  <Svg className={className}>
+    <rect x="3" y="7" width="18" height="10" rx="5" />
+    <circle cx="15" cy="12" r="3" fill="currentColor" stroke="none" />
+  </Svg>
+)
+
+export const IconBars = ({ className }) => (
+  <Svg className={className}>
+    <path d="M6 20V10M12 20V4M18 20v-7" />
+  </Svg>
+)
+
+export const IconLayoutBoard = ({ className }) => (
+  <Svg className={className}>
+    <rect x="3.5" y="4" width="17" height="16" rx="2" />
+    <path d="M3.5 9.5h17" strokeDasharray="1.5 2.2" />
+  </Svg>
+)
