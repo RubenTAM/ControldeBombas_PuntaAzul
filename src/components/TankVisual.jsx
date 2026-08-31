@@ -1,11 +1,13 @@
 // Cylindrical tank rendered in SVG: animated liquid fill with a scrolling
-// wave surface, plus reference lines for the fixed safety limits (HH/LL)
-// and the operator-adjustable control setpoints (arranque/paro).
-//
-// Sized entirely by its container (h-full w-full + viewBox) so it can be
-// made bigger/smaller from the canvas resize handle — the % and volume
-// readout live inside the SVG itself for the same reason, instead of an
+// wave surface. Sized entirely by its container (h-full w-full + viewBox)
+// so it can be made bigger/smaller from the canvas resize handle — the %
+// readout lives inside the SVG itself for the same reason, instead of an
 // absolutely-positioned HTML overlay tuned to one fixed pixel size.
+//
+// Threshold/limit markers (HH/PARO/ARR/LL) are deliberately left out for
+// now — just the tank + the level — per the simplified look requested.
+// An outlet flange at the bottom is the anchor point for connecting pipe
+// widgets (rectas, codos, tes) from the canvas palette.
 
 const VB_W = 220
 const VB_H = 300
@@ -25,35 +27,10 @@ const bodyOutline = `M${LEFT_X},${TOP_Y} L${LEFT_X},${BOTTOM_Y} A${RX},${RY} 0 0
 const WAVE_AMP = 5
 const wavePath = `M0,${WAVE_AMP} Q ${VB_W / 4},${-WAVE_AMP} ${VB_W / 2},${WAVE_AMP} T ${VB_W},${WAVE_AMP} T ${VB_W * 1.5},${WAVE_AMP} T ${VB_W * 2},${WAVE_AMP} L ${VB_W * 2},${WAVE_AMP * 4} L 0,${WAVE_AMP * 4} Z`
 
-function Marker({ value, y, color, label, dashed = true, align = 'right' }) {
-  return (
-    <g>
-      <line
-        x1={LEFT_X - 4}
-        x2={RIGHT_X + 4}
-        y1={y}
-        y2={y}
-        stroke={color}
-        strokeWidth={1.3}
-        strokeDasharray={dashed ? '3 3' : undefined}
-        opacity={0.85}
-      />
-      <text
-        x={align === 'right' ? RIGHT_X + 10 : LEFT_X - 10}
-        y={y + 3.5}
-        textAnchor={align === 'right' ? 'start' : 'end'}
-        className="font-mono text-[10.5px] font-semibold"
-        fill={color}
-      >
-        {label}
-      </text>
-    </g>
-  )
-}
-
-export default function TankVisual({ level, thresholds, limits, volume, capacity }) {
+export default function TankVisual({ level, volume, capacity }) {
   const liquidY = pctToY(level)
   const clipId = 'tank-body-clip'
+  const cx = VB_W / 2
 
   return (
     <div className="flex h-full w-full flex-col items-center">
@@ -70,6 +47,18 @@ export default function TankVisual({ level, thresholds, limits, volume, capacity
             <stop offset="0%" stopColor="#ffffff" stopOpacity="0.55" />
             <stop offset="35%" stopColor="#ffffff" stopOpacity="0" />
           </linearGradient>
+          <linearGradient id="outletStub" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#7c8598" />
+            <stop offset="25%" stopColor="#f2f4f8" />
+            <stop offset="50%" stopColor="#aab2c2" />
+            <stop offset="75%" stopColor="#6c7488" />
+            <stop offset="100%" stopColor="#8b93a6" />
+          </linearGradient>
+          <linearGradient id="outletFlange" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#5c6478" />
+            <stop offset="50%" stopColor="#9aa2b4" />
+            <stop offset="100%" stopColor="#454c5e" />
+          </linearGradient>
         </defs>
 
         {/* tank shell */}
@@ -82,21 +71,21 @@ export default function TankVisual({ level, thresholds, limits, volume, capacity
           <rect x={0} y={TOP_Y} width={VB_W} height={BODY_H} fill="url(#tankSheen)" />
         </g>
 
-        {/* threshold reference lines */}
-        <Marker value={limits.hh} y={pctToY(limits.hh)} color="#c22b2b" label={`HH ${limits.hh}%`} />
-        <Marker value={thresholds.stop} y={pctToY(thresholds.stop)} color="#0891a8" label={`PARO ${thresholds.stop}%`} />
-        <Marker value={thresholds.start} y={pctToY(thresholds.start)} color="#324879" label={`ARR. ${thresholds.start}%`} />
-        <Marker value={limits.ll} y={pctToY(limits.ll)} color="#c22b2b" label={`LL ${limits.ll}%`} />
-
-        {/* outline on top so fill + markers sit underneath the rim */}
+        {/* outline on top so the fill sits underneath the rim */}
         <path d={bodyOutline} fill="none" stroke="#c7ccdb" strokeWidth={2} />
-        <ellipse cx={VB_W / 2} cy={TOP_Y} rx={RX} ry={RY} fill="none" stroke="#c7ccdb" strokeWidth={2} />
+        <ellipse cx={cx} cy={TOP_Y} rx={RX} ry={RY} fill="none" stroke="#c7ccdb" strokeWidth={2} />
+
+        {/* outlet flange — anchor point for connecting pipe widgets */}
+        <rect x={cx - 7} y={BOTTOM_Y - 6} width={14} height={26} fill="url(#outletStub)" />
+        <rect x={cx - 13} y={BOTTOM_Y + 16} width={26} height={8} rx={2} fill="url(#outletFlange)" />
+        <circle cx={cx - 9} cy={BOTTOM_Y + 20} r={1.6} fill="#2b303c" />
+        <circle cx={cx + 9} cy={BOTTOM_Y + 20} r={1.6} fill="#2b303c" />
 
         {/* % + volume readout, drawn in the SVG so it scales with the tank */}
-        <text x={VB_W / 2} y={148} textAnchor="middle" className="font-mono text-[34px] font-bold" fill="#0b1220">
+        <text x={cx} y={148} textAnchor="middle" className="font-mono text-[34px] font-bold" fill="#0b1220">
           {level.toFixed(0)}%
         </text>
-        <text x={VB_W / 2} y={170} textAnchor="middle" className="font-mono text-[12px] font-medium" fill="#324879">
+        <text x={cx} y={170} textAnchor="middle" className="font-mono text-[12px] font-medium" fill="#324879">
           {volume.toFixed(1)} / {capacity.toFixed(1)} m³
         </text>
       </svg>

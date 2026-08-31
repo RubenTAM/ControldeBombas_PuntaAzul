@@ -4,7 +4,8 @@ import LevelBarWidget from './widgets/LevelBarWidget.jsx'
 import ModeSelectWidget from './widgets/ModeSelectWidget.jsx'
 import PipeStraightWidget from './widgets/PipeStraightWidget.jsx'
 import PipeElbowWidget from './widgets/PipeElbowWidget.jsx'
-import { IconPump, IconTank, IconBars, IconToggle, IconPipeStraight, IconPipeElbow } from '../../icons.jsx'
+import PipeTeeWidget from './widgets/PipeTeeWidget.jsx'
+import { IconPump, IconTank, IconBars, IconToggle, IconPipeStraight, IconPipeElbow, IconPipeTee } from '../../icons.jsx'
 
 // Single source of truth for every placeable widget: how it renders, its
 // default footprint, and how it can be resized/rotated on the canvas.
@@ -73,6 +74,17 @@ export const WIDGET_REGISTRY = {
     defaultSize: { w: 60, h: 60 },
     minW: 40,
     minH: 40,
+    resizeAxis: 'none',
+    rotatable: true,
+  },
+  'pipe-tee': {
+    label: 'Te',
+    icon: IconPipeTee,
+    Component: PipeTeeWidget,
+    defaultConfig: {},
+    defaultSize: { w: 64, h: 64 },
+    minW: 44,
+    minH: 44,
     resizeAxis: 'none',
     rotatable: true,
   },

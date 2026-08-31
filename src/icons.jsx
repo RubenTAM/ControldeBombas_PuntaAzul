@@ -249,3 +249,9 @@ export const IconRotate = ({ className }) => (
     <path d="M4 17.5V12h5.5" />
   </Svg>
 )
+
+export const IconPipeTee = ({ className }) => (
+  <Svg className={className}>
+    <path d="M4 7h16M12 7v13" strokeWidth="3.2" />
+  </Svg>
+)
