@@ -7,9 +7,6 @@ export default function Header({ alarmCount, onMenu }) {
         <button onClick={onMenu} className="rounded-lg p-2 text-ink-500 hover:bg-navy-50 lg:hidden">
           <IconMenu className="h-5 w-5" />
         </button>
-        <div>
-          <h1 className="font-sans text-xl font-bold tracking-tight text-ink-900">Dashboard</h1>
-        </div>
       </div>
 
       <div className="flex items-center gap-2.5 sm:gap-3">
