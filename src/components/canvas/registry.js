@@ -57,8 +57,8 @@ export const WIDGET_REGISTRY = {
     // a stretchable drawing like the tank's SVG, and the flanged inlet
     // stub at its bottom needs a stable box height for its port fraction
     // to always land on the same real pixel position (see PumpWidget.jsx)
-    defaultSize: { w: 190, h: 212 },
-    minW: 150,
+    defaultSize: { w: 166, h: 212 },
+    minW: 142,
     minH: 212,
     resizeAxis: 'none',
     rotatable: false,
