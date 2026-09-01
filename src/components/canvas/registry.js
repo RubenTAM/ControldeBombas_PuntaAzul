@@ -69,14 +69,14 @@ export const WIDGET_REGISTRY = {
     // the flange's own bottom edge, same as the tank's outlet port. DO
     // NOT change this one — every existing suction connection depends on
     // it landing exactly here.
-    // Port 1: discharge flange on the card's own right edge, at its
-    // vertical middle — same idea as port 0 but sideways (dir: 0 = east),
+    // Port 1: discharge flange on the card's own right edge, lowered to
+    // the pump volute's outlet (dir: 0 = east),
     // added so the pump has an outlet to attach a discharge line to
     // without disturbing the suction side at all (see PumpWidget.jsx's
     // PumpSideFlange).
     ports: [
       { fx: 0.5, fy: 1, dir: 90 },
-      { fx: 1, fy: 0.5, dir: 0 },
+      { fx: 1, fy: 144 / 212, dir: 0 },
     ],
   },
   tank: {

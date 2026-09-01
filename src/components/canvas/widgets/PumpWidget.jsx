@@ -67,6 +67,11 @@ const DEFAULT_HEIGHT = 212
 // PumpSideFlange's stretchy stub is measured against below.
 const CARD_WIDTH = 168
 
+// The discharge leaves the pump volute, not the middle of the information
+// card. At the default 212px widget height this lands 38px below the old
+// center port and exactly on the outlet drawn inside PumpCard.
+const SIDE_PORT_FRACTION = 144 / DEFAULT_HEIGHT
+
 // piece types that always draw their own flange regardless of connection
 // state (see PipeTeeWidget/PipeTeeUpWidget/PipeElbowWidget) — the pump
 // yields to these instead of doubling up; a plain straight pipe isn't
@@ -227,7 +232,7 @@ export default function PumpWidget({ telemetry, config, onConfigChange, editMode
           <option value="p2">Bomba 2</option>
         </select>
       )}
-      <PumpCard pump={pump} onToggle={telemetry.setPumpRunning} />
+      <PumpCard pump={pump} onToggle={telemetry.setPumpRunning} showPorts />
       {/* drawn unless a Te/curve — which always shows its own — is the
           one connected here; a straight pipe hides its OWN end-flange
           instead, so this still shows in that case (bomba -> recta). */}
@@ -244,7 +249,10 @@ export default function PumpWidget({ telemetry, config, onConfigChange, editMode
           elbow/Te connected here draws its own plate; hiding the whole
           overlay in that case was what let the connected piece float
           away from the card again. */}
-      <div className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2">
+      <div
+        className="pointer-events-none absolute right-0 -translate-y-1/2"
+        style={{ top: `${SIDE_PORT_FRACTION * 100}%` }}
+      >
         <PumpSideFlange gap={sideGap} scale={scale} hidePlate={hideSideFlange} />
       </div>
     </div>
