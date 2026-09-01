@@ -151,8 +151,13 @@ function PumpSideFlange({ gap, scale, hidePlate }) {
   const gradId = `pumpSideFlange-${uid}`
   const plateW = 6 * scale
   const clearance = 4 * scale // small gap between plate and the true tip, same as every other fitting's flange-to-edge margin
-  const stubW = Math.max(2, gap) // the part touching the card — stretches
-  const w = Math.round(stubW + plateW + clearance)
+  // A literal 90° rotation of the lower 48x30 fitting must be 30x48.
+  // Keep that 30px nominal length even though the card-to-widget gap is
+  // smaller; the extra overlap sits inside the card outlet and removes
+  // the visual seam. Only stretch beyond 30 when an older saved widget
+  // has a wider-than-current box.
+  const nominalLength = 30 * scale
+  const w = Math.round(Math.max(nominalLength, gap + plateW + clearance))
   const h = Math.round(48 * scale)
   const cy = h / 2
   const tubeH = 16 * scale

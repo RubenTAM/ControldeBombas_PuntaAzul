@@ -7,7 +7,6 @@ function PumpEquipment({ running, fault, showPorts }) {
   const darkMetalId = `pump-dark-${uid}`
   const bodyId = `pump-body-${uid}`
   const glowId = `pump-glow-${uid}`
-  const waterId = `pump-water-${uid}`
 
   return (
     <svg
@@ -33,10 +32,6 @@ function PumpEquipment({ running, fault, showPorts }) {
           <stop offset="0.55" stopColor={fault ? '#dc2626' : '#123f7b'} />
           <stop offset="1" stopColor="#0b2447" />
         </linearGradient>
-        <linearGradient id={waterId} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="#0ea5e9" />
-          <stop offset="1" stopColor="#3b82f6" />
-        </linearGradient>
         <filter id={glowId} x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="3" result="blur" />
           <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
@@ -61,11 +56,10 @@ function PumpEquipment({ running, fault, showPorts }) {
           bordes de la tarjeta, donde comienzan las bridas del widget. */}
       {showPorts && (
         <>
-          <path d="M104 86h38" stroke="#64748b" strokeWidth="18" />
-          <path d="M104 86h38" stroke={`url(#${metalId})`} strokeWidth="15" />
-          <path d="M104 86h38" stroke={`url(#${waterId})`} strokeWidth="7" strokeLinecap="round" />
+          <path d="M104 86h38" stroke={`url(#${metalId})`} strokeWidth="16" />
+          <path d="M104 86h38" stroke="#1d8ff2" strokeWidth="8" />
           <rect x="63" y="109" width="16" height="15" fill={`url(#${metalId})`} stroke="#64748b" strokeWidth="1" />
-          <path d="M71 111v13" stroke={`url(#${waterId})`} strokeWidth="7" strokeLinecap="round" />
+          <path d="M71 111v13" stroke="#1d8ff2" strokeWidth="8" />
         </>
       )}
 
