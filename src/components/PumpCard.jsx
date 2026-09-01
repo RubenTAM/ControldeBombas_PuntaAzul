@@ -48,9 +48,9 @@ function PumpEquipment({ running, fault, showPorts }) {
       <rect x="55" y="68" width="32" height="7" rx="2" fill={`url(#${metalId})`} stroke="#607086" />
 
       {/* Cuerpo hidráulico y voluta. */}
-      <path d="M38 80c0-6 5-11 11-11h48c7 0 12 5 12 12v21c0 9-7 15-16 15H54c-9 0-16-7-16-16V80Z" fill={`url(#${bodyId})`} stroke="#0b2e5b" strokeWidth="2" />
-      <path d="M45 108h57" stroke="#fff" strokeWidth="2" strokeLinecap="round" opacity=".35" />
-      <path d="M49 79h48" stroke="#6bb8ef" strokeWidth="1.5" strokeLinecap="round" opacity=".65" />
+      <path d="M35 80c0-6 5-11 11-11h48c7 0 12 5 12 12v21c0 9-7 15-16 15H51c-9 0-16-7-16-16V80Z" fill={`url(#${bodyId})`} stroke="#0b2e5b" strokeWidth="2" />
+      <path d="M42 108h57" stroke="#fff" strokeWidth="2" strokeLinecap="round" opacity=".35" />
+      <path d="M46 79h48" stroke="#6bb8ef" strokeWidth="1.5" strokeLinecap="round" opacity=".65" />
 
       {/* Descarga lateral y succión inferior terminan exactamente en los
           bordes de la tarjeta, donde comienzan las bridas del widget. */}

@@ -427,7 +427,7 @@ export default function DashboardCanvas({ telemetry, canvas }) {
               editMode={editMode}
               bare={bare}
               backdrop={w.type === 'panel'}
-              layer={w.type === 'panel' ? 0 : 1}
+              layer={w.type === 'panel' ? 0 : w.type === 'pump' ? 2 : 1}
               x={w.x}
               y={w.y}
               w={w.w}

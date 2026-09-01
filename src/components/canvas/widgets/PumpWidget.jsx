@@ -72,14 +72,7 @@ const CARD_WIDTH = 142
 // center port and exactly on the outlet drawn inside PumpCard.
 const SIDE_PORT_FRACTION = 144 / DEFAULT_HEIGHT
 
-// piece types that always draw their own flange regardless of connection
-// state (see PipeTeeWidget/PipeTeeUpWidget/PipeElbowWidget) — the pump
-// yields to these instead of doubling up; a plain straight pipe isn't
-// in this set on purpose, since IT hides its own end-flange when
-// connected, leaving the pump's as the only one at that joint.
-const ALWAYS_FLANGE_TYPES = new Set(['pipe-elbow', 'pipe-tee', 'pipe-tee-up'])
-
-function PumpFlange({ scale, hidePlate }) {
+function PumpFlange({ scale }) {
   const uid = useId()
   const gradId = `pumpFlange-${uid}`
   const w = Math.round(48 * scale)
@@ -124,13 +117,10 @@ function PumpFlange({ scale, hidePlate }) {
       />
       {/* flange plate — same 24-unit span as every other pipe piece,
           always drawn (this is a permanent fitting, not a port state) */}
-      {!hidePlate && (
-        <>
-          <rect x="12" y="20" width="24" height="6" rx="1" fill={`url(#${gradId})`} />
-          <circle cx="16" cy="23" r="1.3" fill="#2b303c" />
-          <circle cx="32" cy="23" r="1.3" fill="#2b303c" />
-        </>
-      )}
+      <rect x="12" y="20" width="24" height="6" rx="1" fill={`url(#${gradId})`} stroke="#4b5568" strokeWidth="1" />
+      <line x1="13" y1="21.2" x2="35" y2="21.2" stroke="#f8fafc" strokeWidth="0.7" opacity=".9" />
+      <circle cx="16" cy="23" r="1.5" fill="#202938" stroke="#d8dee8" strokeWidth="0.4" />
+      <circle cx="32" cy="23" r="1.5" fill="#202938" stroke="#d8dee8" strokeWidth="0.4" />
     </svg>
   )
 }
@@ -146,7 +136,7 @@ function PumpFlange({ scale, hidePlate }) {
 // pinned to the SVG's own right edge — which the wrapping overlay below
 // anchors to fx:1 — so attaching a piece here still lands exactly on the
 // flange with zero seam, same as before this fix.
-function PumpSideFlange({ gap, scale, hidePlate }) {
+function PumpSideFlange({ gap, scale }) {
   const uid = useId()
   const gradId = `pumpSideFlange-${uid}`
   const plateW = 6 * scale
@@ -162,17 +152,10 @@ function PumpSideFlange({ gap, scale, hidePlate }) {
   const cy = h / 2
   const tubeH = 16 * scale
   const plateX = w - clearance - plateW
-  // When an elbow/Te is connected here, IT draws its own plate (see
-  // ALWAYS_FLANGE_TYPES below) so ours is skipped to avoid doubling up —
-  // but the STUB still has to keep bridging all the way out to the SVG's
-  // own right edge (the true fx:1 tip) regardless: that stub is the only
-  // thing standing between the card and whatever the OTHER piece draws,
-  // and it has zero idea there's a gap to bridge. Skipping the stub
-  // whenever the plate is skipped was exactly the bug — "la brida del
-  // lado queda flotando" reappeared the instant an elbow/Te sat here,
-  // because hiding the plate used to hide the whole fitting, bridge
-  // included.
-  const stubEnd = hidePlate ? w : plateX
+  // The tube continues under the flange all the way to the port, exactly
+  // like the lower fitting. The plate is then painted last, so the pipe
+  // or its animated water can never erase it visually.
+  const stubEnd = w
   return (
     <svg
       width={w}
@@ -205,29 +188,19 @@ function PumpSideFlange({ gap, scale, hidePlate }) {
         strokeDasharray="16 16"
         className="animate-dashFlow"
       />
-      {/* flange plate — skipped when an elbow/Te sitting right here is
-          already drawing its own (see hidePlate above); stays pinned to
-          the SVG's own right edge regardless of stub length otherwise */}
-      {!hidePlate && (
-        <>
-          <rect x={plateX} y={cy - 12 * scale} width={plateW} height={24 * scale} rx="1" fill={`url(#${gradId})`} />
-          <circle cx={plateX + plateW / 2} cy={cy - 8 * scale} r={1.3 * scale} fill="#2b303c" />
-          <circle cx={plateX + plateW / 2} cy={cy + 8 * scale} r={1.3 * scale} fill="#2b303c" />
-        </>
-      )}
+      {/* Same 24x6 plate and bolt offsets as PumpFlange, rotated 90°. */}
+      <rect x={plateX} y={cy - 12 * scale} width={plateW} height={24 * scale} rx="1" fill={`url(#${gradId})`} stroke="#4b5568" strokeWidth={1 * scale} />
+      <line x1={plateX + 1.2 * scale} y1={cy - 11 * scale} x2={plateX + 1.2 * scale} y2={cy + 11 * scale} stroke="#f8fafc" strokeWidth={0.7 * scale} opacity=".9" />
+      <circle cx={plateX + plateW / 2} cy={cy - 8 * scale} r={1.5 * scale} fill="#202938" stroke="#d8dee8" strokeWidth={0.4 * scale} />
+      <circle cx={plateX + plateW / 2} cy={cy + 8 * scale} r={1.5 * scale} fill="#202938" stroke="#d8dee8" strokeWidth={0.4 * scale} />
     </svg>
   )
 }
 
-export default function PumpWidget({ telemetry, config, onConfigChange, editMode, width, height, connectedTypes }) {
+export default function PumpWidget({ telemetry, config, onConfigChange, editMode, width, height }) {
   const pumpId = config.pumpId ?? 'p1'
   const pump = telemetry.pumps[pumpId]
   const scale = height ? height / DEFAULT_HEIGHT : 1
-  const hideOwnFlange = ALWAYS_FLANGE_TYPES.has(connectedTypes?.[0])
-  // Port 1 (see registry.js) — the new discharge side, checked completely
-  // independently of port 0 above so attaching something to one side can
-  // never hide/show the other's flange.
-  const hideSideFlange = ALWAYS_FLANGE_TYPES.has(connectedTypes?.[1])
   // Real pixel distance from PumpCard's fixed edge to the box's own right
   // edge (see the file-top comment) — falls back to the registry default
   // (166) if `width` isn't passed for some reason, same math either way.
@@ -249,7 +222,7 @@ export default function PumpWidget({ telemetry, config, onConfigChange, editMode
       {/* drawn unless a Te/curve — which always shows its own — is the
           one connected here; a straight pipe hides its OWN end-flange
           instead, so this still shows in that case (bomba -> recta). */}
-      <PumpFlange scale={scale} hidePlate={hideOwnFlange} />
+      <PumpFlange scale={scale} />
       {/* discharge port — an absolutely-positioned overlay flush with the
           widget's own right edge (fx:1), aligned with the volute outlet
           (fy:144/212) — see the file-top comment for why growing the box
@@ -266,7 +239,7 @@ export default function PumpWidget({ telemetry, config, onConfigChange, editMode
         className="pointer-events-none absolute right-0 -translate-y-1/2"
         style={{ top: `${SIDE_PORT_FRACTION * 100}%` }}
       >
-        <PumpSideFlange gap={sideGap} scale={scale} hidePlate={hideSideFlange} />
+        <PumpSideFlange gap={sideGap} scale={scale} />
       </div>
     </div>
   )
