@@ -57,6 +57,9 @@ function PumpEquipment({ running, fault, showPorts }) {
       {showPorts && (
         <>
           <path d="M104 86h38" stroke={`url(#${metalId})`} strokeWidth="16" />
+          {/* El mismo acople rectangular de la succión inferior, rotado
+              90° y pegado al cuerpo en la descarga lateral. */}
+          <rect x="104" y="78" width="15" height="16" fill={`url(#${metalId})`} stroke="#64748b" strokeWidth="1" />
           <path d="M104 86h38" stroke="#1d8ff2" strokeWidth="8" />
           <rect x="63" y="109" width="16" height="15" fill={`url(#${metalId})`} stroke="#64748b" strokeWidth="1" />
           <path d="M71 111v13" stroke="#1d8ff2" strokeWidth="8" />
