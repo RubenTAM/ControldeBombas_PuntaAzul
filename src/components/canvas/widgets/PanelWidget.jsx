@@ -1,9 +1,9 @@
-// Blank panel — WidgetShell already draws the white rounded card (and, in
-// edit mode, suppresses its own header/resize chrome for this type — see
-// WidgetShell's `!backdrop` guards and the always-reachable
-// PanelReachHandle it exports instead), so it exists purely as free space
-// the operator can group other widgets on top of, e.g. as a backdrop strip
-// down one side of the dashboard.
+// Blank panel — WidgetShell already draws the white rounded card (its own
+// header/resize chrome now lives entirely in WidgetShell's exported
+// WidgetReachHandle, an always-on-top overlay used for every widget, not
+// just this one — see that file's comment), so it exists purely as free
+// space the operator can group other widgets on top of, e.g. as a backdrop
+// strip down one side of the dashboard.
 //
 // Two small extras on top of that blank canvas: an optional title (typed
 // inline, same pattern as SectionHeaderWidget's inputs), and, until the

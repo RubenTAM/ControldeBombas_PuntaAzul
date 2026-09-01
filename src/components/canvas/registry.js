@@ -63,11 +63,21 @@ export const WIDGET_REGISTRY = {
     resizeAxis: 'none',
     rotatable: false,
     bare: true,
-    // inlet flange at the bottom-center, flush with the widget's own
-    // bottom edge — PumpWidget bottom-anchors the card + flange stack in
-    // its box (see its own comment), so fy: 1 always lands right on the
-    // flange's own bottom edge, same as the tank's outlet port.
-    ports: [{ fx: 0.5, fy: 1, dir: 90 }],
+    // Port 0: inlet flange at the bottom-center, flush with the widget's
+    // own bottom edge — PumpWidget bottom-anchors the card + flange stack
+    // in its box (see its own comment), so fy: 1 always lands right on
+    // the flange's own bottom edge, same as the tank's outlet port. DO
+    // NOT change this one — every existing suction connection depends on
+    // it landing exactly here.
+    // Port 1: discharge flange on the card's own right edge, at its
+    // vertical middle — same idea as port 0 but sideways (dir: 0 = east),
+    // added so the pump has an outlet to attach a discharge line to
+    // without disturbing the suction side at all (see PumpWidget.jsx's
+    // PumpSideFlange).
+    ports: [
+      { fx: 0.5, fy: 1, dir: 90 },
+      { fx: 1, fy: 0.5, dir: 0 },
+    ],
   },
   tank: {
     label: 'Tanque de nivel',

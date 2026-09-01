@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import WidgetShell, { PanelReachHandle } from './WidgetShell.jsx'
+import WidgetShell, { WidgetReachHandle } from './WidgetShell.jsx'
 import { WIDGET_REGISTRY } from './registry.js'
 import { getPortWorld, placeAttached, CONNECT_THRESHOLD } from './ports.js'
 import { sketchToPieces, simplify, orthogonalize, findAlignmentGuide } from './sketchToPipes.js'
@@ -428,23 +428,38 @@ export default function DashboardCanvas({ telemetry, canvas }) {
           )
         })}
 
+        {/* Move/remove/resize/rotate handles for EVERY widget, not just
+            panels — see WidgetShell.jsx's WidgetReachHandle comment for
+            why this has to be a separate, always-on-top sibling layer
+            instead of chrome drawn inside each widget's own body: two
+            widgets sharing the same flat `layer` (0 or 1, right above)
+            still trap an earlier one's own controls under whichever one
+            painted later, panel or not — "los widgets se quedan detras
+            de lo de arriba... no me permite borrarlos o moverlos". */}
         {editMode &&
-          widgets
-            .filter((w) => w.type === 'panel')
-            .map((w) => (
-              <PanelReachHandle
+          widgets.map((w) => {
+            const def = WIDGET_REGISTRY[w.type]
+            if (!def) return null
+            return (
+              <WidgetReachHandle
                 key={`reach-${w.id}`}
+                title={def.label}
                 x={w.x}
                 y={w.y}
                 w={w.w}
                 h={w.h}
-                minW={WIDGET_REGISTRY[w.type].minW}
-                minH={WIDGET_REGISTRY[w.type].minH}
+                rotation={w.rotation}
+                minW={def.minW}
+                minH={def.minH}
+                resizeAxis={def.resizeAxis}
+                rotatable={def.rotatable}
                 onTransform={(patch) => updateTransform(w.id, snapMove(w, patch))}
                 onFront={() => bringToFront(w.id)}
+                onBack={w.type === 'panel' ? () => sendToBack(w.id) : undefined}
                 onRemove={() => removeWidget(w.id)}
               />
-            ))}
+            )
+          })}
 
         {editMode &&
           ports
