@@ -172,14 +172,21 @@ export default function DashboardCanvas({ telemetry, canvas }) {
     const def = WIDGET_REGISTRY[type]
     if (!def || !canvasRef.current) return
     const rect = canvasRef.current.getBoundingClientRect()
-    // widgets are positioned relative to the padded inner box (see
-    // CANVAS_PAD), so subtract that inset to land the piece under the
-    // actual cursor instead of consistently offset by the padding amount;
-    // also add back however far the canvas is currently scrolled, since
-    // the inner box can now be bigger than the visible viewport (see
-    // contentBounds) and rect only describes the VISIBLE portion of it
-    const rawX = e.clientX - rect.left + canvasRef.current.scrollLeft - CANVAS_PAD - def.defaultSize.w / 2
-    const rawY = e.clientY - rect.top + canvasRef.current.scrollTop - CANVAS_PAD - def.defaultSize.h / 2
+    // Widgets/ports are absolutely positioned inside the padded inner box,
+    // but CSS resolves an absolutely-positioned child's left/top against
+    // that box's OWN edge (its padding box, which starts at the same place
+    // as its border box when there's no border) — the padding sits INSIDE
+    // that box as empty space, it doesn't push the origin inward. So a
+    // world x/y of 0 renders exactly at canvasRef's own rect.left/top, not
+    // rect.left + CANVAS_PAD; subtracting CANVAS_PAD here used to shift
+    // every drop/draw coordinate by a stray 28px versus what's actually
+    // under the cursor — confirmed by comparing a real port's rendered
+    // screen position against this conversion. Also add back however far
+    // the canvas is currently scrolled, since the inner box can now be
+    // bigger than the visible viewport (see contentBounds) and rect only
+    // describes the VISIBLE portion of it.
+    const rawX = e.clientX - rect.left + canvasRef.current.scrollLeft - def.defaultSize.w / 2
+    const rawY = e.clientY - rect.top + canvasRef.current.scrollTop - def.defaultSize.h / 2
     const x = Math.round(rawX / GRID) * GRID
     const y = Math.round(rawY / GRID) * GRID
     addWidgetAt(type, x, y, def.defaultSize, def.defaultConfig)
@@ -215,18 +222,39 @@ export default function DashboardCanvas({ telemetry, canvas }) {
   // naturally less precise than a dragged piece.
   const DRAW_START_SNAP = 40
 
-  // canvas-local coordinates (relative to the padded inner box — same
-  // space widget x/y live in) for a mouse event, same math as handleDrop.
+  // canvas-local coordinates (same space widget x/y and port positions
+  // live in) for a mouse event — see the CANVAS_PAD note on handleDrop
+  // above for why this does NOT also subtract CANVAS_PAD.
   const toCanvasPoint = (e) => {
     const rect = canvasRef.current.getBoundingClientRect()
     return {
-      x: e.clientX - rect.left + canvasRef.current.scrollLeft - CANVAS_PAD,
-      y: e.clientY - rect.top + canvasRef.current.scrollTop - CANVAS_PAD,
+      x: e.clientX - rect.left + canvasRef.current.scrollLeft,
+      y: e.clientY - rect.top + canvasRef.current.scrollTop,
     }
   }
 
   const findStartAnchor = (pt) => {
     const match = ports.find((p) => p.open && Math.hypot(p.x - pt.x, p.y - pt.y) < DRAW_START_SNAP)
+    if (!match) return null
+    return { port: { x: match.x, y: match.y, dir: match.dir }, scale: scaleOfSource(match.widgetId) }
+  }
+
+  // Same idea as findStartAnchor, but for the OTHER end of the stroke —
+  // "llevando de una tubería a otra... va a quedar desfasada". Without
+  // this, only the stroke's own start ever welded onto a real port; the
+  // end just stopped wherever the mouse happened to lift, which could be
+  // CLOSE enough to another port to visually merge (within
+  // CONNECT_THRESHOLD) while still sitting a few px off on one axis —
+  // exactly the "desfasada" the shadow/preview was already showing before
+  // accepting. `startAnchor`'s own port is excluded so a short stroke that
+  // starts and ends near the same port can't snap to itself.
+  const findEndAnchor = (pt, startAnchor) => {
+    const match = ports.find(
+      (p) =>
+        p.open &&
+        Math.hypot(p.x - pt.x, p.y - pt.y) < DRAW_START_SNAP &&
+        !(startAnchor && p.x === startAnchor.port.x && p.y === startAnchor.port.y),
+    )
     if (!match) return null
     return { port: { x: match.x, y: match.y, dir: match.dir }, scale: scaleOfSource(match.widgetId) }
   }
@@ -263,7 +291,8 @@ export default function DashboardCanvas({ telemetry, canvas }) {
       return
     }
     const anchor = findStartAnchor(strokePoints[0])
-    const pieces = sketchToPieces(strokePoints, WIDGET_REGISTRY, anchor)
+    const endAnchor = findEndAnchor(strokePoints[strokePoints.length - 1], anchor)
+    const pieces = sketchToPieces(strokePoints, WIDGET_REGISTRY, anchor, endAnchor)
     if (pieces.length === 0) {
       setStrokePoints([])
       return

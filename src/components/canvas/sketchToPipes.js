@@ -237,7 +237,18 @@ export function mergeCollinear(corners) {
 // point landed near an existing open port, the whole run starts from THAT
 // port (so it welds on) and is sized to match it; otherwise the run starts
 // free-floating at 1:1 scale from the stroke's own first point.
-export function buildPieces(corners, registry, startAnchor = null) {
+//
+// `endAnchor` — same shape, when the stroke's LAST point landed near a
+// different open port: "llevando de una tubería a otra... va a quedar
+// desfasada". Before this, only the STROKE's own first/last corners were
+// ever compared to each other (see alignedAxes below) — an actual target
+// port elsewhere on the canvas was never consulted, so a hand-drawn run
+// could land within CONNECT_THRESHOLD (close enough to visually merge)
+// while still sitting a handful of px off on one axis, reading as "un
+// poco desfasada" right at the join. When there's a real endAnchor, both
+// axes are corrected to its EXACT position instead of just whatever the
+// raw sketch's own corners happened to agree on.
+export function buildPieces(corners, registry, startAnchor = null, endAnchor = null) {
   if (corners.length < 2) return []
   const straightDef = registry['pipe-straight']
   const elbowDef = registry['pipe-elbow']
@@ -282,31 +293,23 @@ export function buildPieces(corners, registry, startAnchor = null) {
     sourcePort = exitPort
   }
 
-  // Enforce endpoint alignments on the REAL built geometry. orthogonalize()
+  // Enforce endpoint alignment on the REAL built geometry. orthogonalize()
   // can deliberately snap the first and last sketch corners to the same x
   // or y, but every elbow also contributes its own physical displacement.
   // Consequently, using the raw sketch length for every straight can move
-  // the final rendered endpoint away from the orange alignment guide.
+  // the final rendered endpoint away from the orange alignment guide (or,
+  // with a real endAnchor, off the port it's supposed to land on).
   //
-  // The old correction only resized the LAST straight. That works when the
-  // last leg runs along the coordinate that needs correction (a simple U),
-  // but not for an S/step whose final leg is horizontal while its y needs
-  // correcting. Here we find the last straight that runs along the required
-  // axis, resize it, then translate the entire connected suffix by the same
-  // amount. All joints stay coincident and the two real endpoints finish on
-  // exactly the coordinate promised by the guide.
-  const firstCorner = corners[0]
-  const lastCorner = corners[corners.length - 1]
-  const alignedAxes = []
-  if (Math.abs(firstCorner.x - lastCorner.x) < 0.01) alignedAxes.push('x')
-  if (Math.abs(firstCorner.y - lastCorner.y) < 0.01) alignedAxes.push('y')
-
-  for (const axis of alignedAxes) {
-    const firstFreePort = getPortWorld(pieces[0], straightDef.ports[0])
+  // Resizes the LAST straight segment that travels along `axis`, then
+  // translates the entire connected suffix after it by the same amount —
+  // not just the last straight overall, so this still works for an S/step
+  // whose final leg runs the OTHER axis. All joints stay coincident and
+  // the real endpoint finishes at exactly `targetValue` on `axis`.
+  const correctAxis = (axis, targetValue) => {
     const lastPiece = pieces[pieces.length - 1]
     const lastFreePort = getPortWorld(lastPiece, straightDef.ports[1])
-    const delta = firstFreePort[axis] - lastFreePort[axis]
-    if (Math.abs(delta) < 0.01) continue
+    const delta = targetValue - lastFreePort[axis]
+    if (Math.abs(delta) < 0.01) return
 
     for (let i = pieces.length - 1; i >= 0; i--) {
       const piece = pieces[i]
@@ -332,16 +335,32 @@ export function buildPieces(corners, registry, startAnchor = null) {
       for (let j = i + 1; j < pieces.length; j++) {
         pieces[j] = { ...pieces[j], x: pieces[j].x + shiftX, y: pieces[j].y + shiftY }
       }
-      break
+      return
     }
+  }
+
+  if (endAnchor) {
+    // a real target port: land on it exactly, on BOTH axes, regardless of
+    // what the raw hand-drawn corners happened to already agree on
+    correctAxis('x', endAnchor.port.x)
+    correctAxis('y', endAnchor.port.y)
+  } else {
+    // no target port — just keep the sketch internally consistent: only
+    // correct an axis the drawing itself implied should line up (e.g. a
+    // hand-drawn U whose two legs were meant to end at the same height)
+    const firstCorner = corners[0]
+    const lastCorner = corners[corners.length - 1]
+    const firstFreePort = getPortWorld(pieces[0], straightDef.ports[0])
+    if (Math.abs(firstCorner.x - lastCorner.x) < 0.01) correctAxis('x', firstFreePort.x)
+    if (Math.abs(firstCorner.y - lastCorner.y) < 0.01) correctAxis('y', firstFreePort.y)
   }
 
   return pieces
 }
 
 // Convenience: raw stroke points in → ready-to-place piece list out.
-export function sketchToPieces(rawPoints, registry, startAnchor = null) {
+export function sketchToPieces(rawPoints, registry, startAnchor = null, endAnchor = null) {
   const simplified = simplify(rawPoints)
   const corners = mergeCollinear(orthogonalize(simplified))
-  return buildPieces(corners, registry, startAnchor)
+  return buildPieces(corners, registry, startAnchor, endAnchor)
 }
