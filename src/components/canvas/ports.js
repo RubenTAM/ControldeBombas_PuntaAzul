@@ -2,6 +2,12 @@
 // points land on the canvas once its position/size/rotation are known, and
 // how to place a brand-new piece so it latches cleanly onto one of them.
 
+// A port closer than this (px) to another widget's port counts as
+// "connected" — used both to decide when to hide a flange (DashboardCanvas)
+// and, in alignConnections (useCanvas.js), which pairs of ports get
+// snapped pixel-perfect. Kept in one place so both stay in sync.
+export const CONNECT_THRESHOLD = 14
+
 export function rotatePoint(px, py, cx, cy, angleDeg) {
   const rad = (angleDeg * Math.PI) / 180
   const cos = Math.cos(rad)

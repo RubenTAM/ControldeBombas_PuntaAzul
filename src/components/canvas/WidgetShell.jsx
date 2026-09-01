@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { IconGrip, IconX, IconRotate } from '../../icons.jsx'
+import { IconGrip, IconX, IconRotate, IconSendBack } from '../../icons.jsx'
 import { useTransformable } from './useTransformable.js'
 
 // Generic chrome + move/resize/rotate mechanics for every widget placed on
@@ -14,6 +14,8 @@ export default function WidgetShell({
   title,
   editMode,
   bare = false,
+  backdrop = false,
+  layer,
   x,
   y,
   w,
@@ -25,6 +27,7 @@ export default function WidgetShell({
   rotatable = false,
   onTransform,
   onFront,
+  onBack,
   onRemove,
   children,
 }) {
@@ -34,6 +37,7 @@ export default function WidgetShell({
     y,
     w,
     h,
+    rotation,
     minW,
     minH,
     onChange: onTransform,
@@ -46,6 +50,7 @@ export default function WidgetShell({
     top: y,
     width: w,
     height: h,
+    zIndex: layer,
     transform: rotation ? `rotate(${rotation}deg)` : undefined,
   }
 
@@ -103,11 +108,12 @@ export default function WidgetShell({
       style={positionStyle}
       onMouseDown={editMode ? onFront : undefined}
       className={[
-        'flex flex-col items-center gap-2 rounded-2xl border bg-white p-3 shadow-card transition-shadow',
-        editMode ? 'border-dashed border-navy-300' : 'border-ink-100',
+        'flex flex-col items-center gap-2 rounded-2xl border p-3 shadow-card transition-shadow',
+        'bg-white',
+        editMode ? 'border-dashed border-navy-300' : backdrop ? 'border-navy-100' : 'border-ink-100',
       ].join(' ')}
     >
-      {editMode && (
+      {editMode && !backdrop && (
         <div className="flex w-full shrink-0 items-center justify-between">
           <span
             onMouseDown={startMove}
@@ -115,12 +121,26 @@ export default function WidgetShell({
           >
             <IconGrip className="h-3.5 w-3.5" /> {title}
           </span>
-          <button
-            onClick={onRemove}
-            className="rounded p-1 text-ink-300 hover:bg-status-criticalBg hover:text-status-critical"
-          >
-            <IconX className="h-3.5 w-3.5" />
-          </button>
+          <div className="flex items-center gap-1">
+            {onBack && (
+              <button
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={onBack}
+                title="Enviar panel atrás"
+                aria-label="Enviar panel atrás"
+                className="flex items-center gap-1 rounded px-1.5 py-1 text-[10px] font-semibold text-navy-400 hover:bg-navy-50 hover:text-navy-600"
+              >
+                <IconSendBack className="h-3.5 w-3.5" />
+                Atrás
+              </button>
+            )}
+            <button
+              onClick={onRemove}
+              className="rounded p-1 text-ink-300 hover:bg-status-criticalBg hover:text-status-critical"
+            >
+              <IconX className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       )}
 
@@ -136,13 +156,62 @@ export default function WidgetShell({
         </button>
       )}
 
-      {editMode && resizeAxis !== 'none' && (
+      {editMode && resizeAxis !== 'none' && !backdrop && (
         <div
           onMouseDown={(e) => startResize(e, resizeAxis)}
           title="Redimensionar"
           className="absolute bottom-0.5 right-0.5 h-3.5 w-3.5 cursor-se-resize rounded-sm border-b-2 border-r-2 border-navy-400"
         />
       )}
+    </div>
+  )
+}
+
+
+// Escape hatch for the one widget type that's forced BEHIND every other
+// widget by design (see DashboardCanvas's `layer` prop / useCanvas's
+// bringToFront comment): a blank Panel is meant to sit visually under
+// whatever real widgets get placed on top of it, which is exactly what
+// used to make its own move/remove/resize chrome (drawn inside its own
+// body above, now suppressed via `!backdrop`) impossible to click the
+// moment anything covered it — "el panel... no me deja borrar". This
+// renders as a true SIBLING of every widget body (see DashboardCanvas),
+// at a z-index above ALL of them, so it's always reachable no matter
+// what's stacked on top of the panel itself.
+export function PanelReachHandle({ x, y, w, h, minW, minH, onTransform, onFront, onRemove }) {
+  const { startMove, startResize } = useTransformable({
+    x,
+    y,
+    w,
+    h,
+    rotation: 0,
+    minW,
+    minH,
+    onChange: onTransform,
+    onFront,
+  })
+
+  return (
+    <div style={{ position: 'absolute', left: x, top: y, width: w, height: h, zIndex: 25, pointerEvents: 'none' }}>
+      <button
+        onMouseDown={startMove}
+        title="Mover panel"
+        className="pointer-events-auto absolute -left-2.5 -top-2.5 flex h-6 w-6 cursor-grab items-center justify-center rounded-full bg-white text-navy-500 shadow-sm ring-1 ring-navy-300 active:cursor-grabbing"
+      >
+        <IconGrip className="h-3.5 w-3.5" />
+      </button>
+      <button
+        onClick={onRemove}
+        title="Quitar panel"
+        className="pointer-events-auto absolute -right-2.5 -top-2.5 flex h-6 w-6 items-center justify-center rounded-full bg-white text-ink-300 shadow-sm ring-1 ring-ink-200 hover:text-status-critical"
+      >
+        <IconX className="h-3.5 w-3.5" />
+      </button>
+      <div
+        onMouseDown={(e) => startResize(e, 'both')}
+        title="Redimensionar panel"
+        className="pointer-events-auto absolute -bottom-1.5 -right-1.5 h-4 w-4 cursor-se-resize rounded-sm border-b-2 border-r-2 border-navy-400 bg-white"
+      />
     </div>
   )
 }

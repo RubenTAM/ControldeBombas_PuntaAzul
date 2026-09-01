@@ -8,7 +8,7 @@ const ANGLE_SNAP = 90
 
 const snap = (v, step) => Math.round(v / step) * step
 
-export function useTransformable({ x, y, w, h, minW = 60, minH = 40, onChange, onFront }) {
+export function useTransformable({ x, y, w, h, rotation = 0, minW = 60, minH = 40, onChange, onFront }) {
   const cleanup = useRef(null)
 
   const listen = useCallback((onMove, onUp) => {
@@ -55,10 +55,24 @@ export function useTransformable({ x, y, w, h, minW = 60, minH = 40, onChange, o
       const origH = h
       const startX = e.clientX
       const startY = e.clientY
+      // undo the widget's own rotation on the raw screen-space mouse delta
+      // so "drag the handle" always grows the piece along its own local
+      // width/height — without this, a rotated widget (e.g. a straight
+      // pipe turned to point up/down) would have screen dx/dy bleeding
+      // into the WRONG local axis, quietly changing its thickness instead
+      // of its length with no way to tell just from the numbers.
+      const rad = (-rotation * Math.PI) / 180
+      const cos = Math.cos(rad)
+      const sin = Math.sin(rad)
 
       const onMove = (ev) => {
-        let nw = axis === 'height' ? origW : origW + (ev.clientX - startX)
-        let nh = axis === 'width' ? origH : origH + (ev.clientY - startY)
+        const dxScreen = ev.clientX - startX
+        const dyScreen = ev.clientY - startY
+        const dxLocal = dxScreen * cos - dyScreen * sin
+        const dyLocal = dxScreen * sin + dyScreen * cos
+
+        let nw = axis === 'height' ? origW : origW + dxLocal
+        let nh = axis === 'width' ? origH : origH + dyLocal
         if (!ev.altKey) {
           nw = snap(nw, GRID)
           nh = snap(nh, GRID)
@@ -68,7 +82,7 @@ export function useTransformable({ x, y, w, h, minW = 60, minH = 40, onChange, o
       const onUp = () => cleanup.current?.()
       listen(onMove, onUp)
     },
-    [w, h, minW, minH, onChange, onFront, listen],
+    [w, h, rotation, minW, minH, onChange, onFront, listen],
   )
 
   const startRotate = useCallback(

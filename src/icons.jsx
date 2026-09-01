@@ -118,6 +118,34 @@ export const IconX = ({ className }) => (
   </Svg>
 )
 
+export const IconSendBack = ({ className }) => (
+  <Svg className={className}>
+    <rect x="6.5" y="4.5" width="12" height="10" rx="1.5" />
+    <path d="M4.5 9.5v8a2 2 0 0 0 2 2h10" />
+    <path d="m12 14-3 3-3-3" />
+  </Svg>
+)
+
+export const IconHeading = ({ className }) => (
+  <Svg className={className}>
+    <path d="M5 6v12M19 6v12M5 12h14" />
+    <path d="M3 4h4M17 4h4" />
+  </Svg>
+)
+
+export const IconDivider = ({ className }) => (
+  <Svg className={className}>
+    <path d="M3 12h6M15 12h6" />
+    <rect x="9" y="9.5" width="6" height="5" rx="2.5" />
+  </Svg>
+)
+
+export const IconActivity = ({ className }) => (
+  <Svg className={className}>
+    <path d="M3 12h4l2-6 4 12 2-6h6" />
+  </Svg>
+)
+
 export const IconPower = ({ className }) => (
   <Svg className={className}>
     <path d="M12 3.8v7.2" />
@@ -253,5 +281,41 @@ export const IconRotate = ({ className }) => (
 export const IconPipeTee = ({ className }) => (
   <Svg className={className}>
     <path d="M4 7h16M12 7v13" strokeWidth="3.2" />
+  </Svg>
+)
+
+export const IconPipeTeeUp = ({ className }) => (
+  <Svg className={className}>
+    <path d="M4 17h16M12 17V4" strokeWidth="3.2" />
+  </Svg>
+)
+
+export const IconAlign = ({ className }) => (
+  <Svg className={className}>
+    <path d="M7 4h4v8a3 3 0 0 0 6 0V4h4v8a7 7 0 0 1-14 0Z" />
+    <path d="M7 8h4M13 8h4" />
+  </Svg>
+)
+
+export const IconPencil = ({ className }) => (
+  <Svg className={className}>
+    <path d="M4 20l1-4.5L14.5 6 18 9.5 8.5 19 4 20Z" strokeLinejoin="round" />
+    <path d="M12.5 8 16 11.5" />
+  </Svg>
+)
+
+export const IconGauge = ({ className }) => (
+  <Svg className={className}>
+    <path d="M4 16a8 8 0 0 1 16 0" />
+    <path d="M12 16 16.2 10.3" />
+    <circle cx="12" cy="16" r="1.15" fill="currentColor" stroke="none" />
+    <path d="M4 16h1.6M18.4 16H20M6.3 9.3l1.2 1.2M17.7 9.3l-1.2 1.2" />
+  </Svg>
+)
+
+export const IconTable = ({ className }) => (
+  <Svg className={className}>
+    <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
+    <path d="M3.5 9.7h17M3.5 14.9h17M9.5 4.5v15" />
   </Svg>
 )

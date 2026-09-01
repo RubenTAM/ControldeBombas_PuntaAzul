@@ -5,7 +5,31 @@ import ModeSelectWidget from './widgets/ModeSelectWidget.jsx'
 import PipeStraightWidget from './widgets/PipeStraightWidget.jsx'
 import PipeElbowWidget from './widgets/PipeElbowWidget.jsx'
 import PipeTeeWidget from './widgets/PipeTeeWidget.jsx'
-import { IconPump, IconTank, IconBars, IconToggle, IconPipeStraight, IconPipeElbow, IconPipeTee } from '../../icons.jsx'
+import PipeTeeUpWidget from './widgets/PipeTeeUpWidget.jsx'
+import LevelHistoryWidget from './widgets/LevelHistoryWidget.jsx'
+import PanelWidget from './widgets/PanelWidget.jsx'
+import SectionHeaderWidget from './widgets/SectionHeaderWidget.jsx'
+import DividerWidget from './widgets/DividerWidget.jsx'
+import OperationsSummaryWidget from './widgets/OperationsSummaryWidget.jsx'
+import SetpointWidget from './widgets/SetpointWidget.jsx'
+import HistoryTableWidget from './widgets/HistoryTableWidget.jsx'
+import {
+  IconPump,
+  IconTank,
+  IconBars,
+  IconToggle,
+  IconPipeStraight,
+  IconPipeElbow,
+  IconPipeTee,
+  IconPipeTeeUp,
+  IconHistory,
+  IconSquare,
+  IconHeading,
+  IconDivider,
+  IconActivity,
+  IconGauge,
+  IconTable,
+} from '../../icons.jsx'
 
 // Single source of truth for every placeable widget: how it renders, its
 // default footprint, and how it can be resized/rotated on the canvas.
@@ -29,11 +53,21 @@ export const WIDGET_REGISTRY = {
     icon: IconPump,
     Component: PumpWidget,
     defaultConfig: { pumpId: 'p1' },
-    defaultSize: { w: 190, h: 270 },
+    // fixed size, not resizable — PumpWidget is a fixed-content card, not
+    // a stretchable drawing like the tank's SVG, and the flanged inlet
+    // stub at its bottom needs a stable box height for its port fraction
+    // to always land on the same real pixel position (see PumpWidget.jsx)
+    defaultSize: { w: 190, h: 212 },
     minW: 150,
-    minH: 220,
-    resizeAxis: 'both',
+    minH: 212,
+    resizeAxis: 'none',
     rotatable: false,
+    bare: true,
+    // inlet flange at the bottom-center, flush with the widget's own
+    // bottom edge — PumpWidget bottom-anchors the card + flange stack in
+    // its box (see its own comment), so fy: 1 always lands right on the
+    // flange's own bottom edge, same as the tank's outlet port.
+    ports: [{ fx: 0.5, fy: 1, dir: 90 }],
   },
   tank: {
     label: 'Tanque de nivel',
@@ -81,6 +115,17 @@ export const WIDGET_REGISTRY = {
     resizeAxis: 'both',
     rotatable: false,
   },
+  setpoint: {
+    label: 'Setpoint de nivel',
+    icon: IconGauge,
+    Component: SetpointWidget,
+    defaultConfig: { key: 'start' },
+    defaultSize: { w: 220, h: 150 },
+    minW: 180,
+    minH: 130,
+    resizeAxis: 'both',
+    rotatable: false,
+  },
   'pipe-straight': {
     label: 'Tubería recta',
     icon: IconPipeStraight,
@@ -108,10 +153,12 @@ export const WIDGET_REGISTRY = {
     resizeAxis: 'none',
     rotatable: true,
     bare: true,
-    // top opening, then right opening (matches PipeElbowWidget's curve)
+    // Both openings are centered on the axes of the 72x72 box. Rotating a
+    // fitting therefore cannot move one flange relative to its mirrored
+    // counterpart in a U, omega or stepped run.
     ports: [
-      { fx: 28 / 72, fy: 0, dir: 270 },
-      { fx: 1, fy: 48 / 72, dir: 0 },
+      { fx: 0.5, fy: 0, dir: 270 },
+      { fx: 1, fy: 0.5, dir: 0 },
     ],
   },
   'pipe-tee': {
@@ -131,10 +178,121 @@ export const WIDGET_REGISTRY = {
       { fx: 0.5, fy: 1, dir: 90 },
     ],
   },
+  'pipe-tee-up': {
+    label: 'Te (arriba)',
+    icon: IconPipeTeeUp,
+    Component: PipeTeeUpWidget,
+    defaultConfig: {},
+    defaultSize: { w: 72, h: 72 },
+    minW: 56,
+    minH: 56,
+    resizeAxis: 'none',
+    rotatable: true,
+    bare: true,
+    ports: [
+      { fx: 0, fy: 0.5, dir: 180 },
+      { fx: 1, fy: 0.5, dir: 0 },
+      { fx: 0.5, fy: 0, dir: 270 },
+    ],
+  },
+  levelhistory: {
+    label: 'Histórico de nivel',
+    icon: IconHistory,
+    Component: LevelHistoryWidget,
+    defaultConfig: {},
+    defaultSize: { w: 720, h: 380 },
+    minW: 480,
+    minH: 280,
+    resizeAxis: 'both',
+    rotatable: false,
+    bare: true,
+  },
+  'history-table': {
+    label: 'Tabla de históricos',
+    icon: IconTable,
+    Component: HistoryTableWidget,
+    defaultConfig: {},
+    defaultSize: { w: 460, h: 280 },
+    minW: 280,
+    minH: 200,
+    resizeAxis: 'both',
+    rotatable: false,
+    bare: true,
+  },
+  panel: {
+    label: 'Panel en blanco',
+    icon: IconSquare,
+    Component: PanelWidget,
+    defaultConfig: {},
+    defaultSize: { w: 280, h: 420 },
+    minW: 160,
+    minH: 160,
+    resizeAxis: 'both',
+    rotatable: false,
+  },
+  'section-header': {
+    label: 'Encabezado de sección',
+    icon: IconHeading,
+    Component: SectionHeaderWidget,
+    defaultConfig: {
+      eyebrow: 'OPERACIÓN',
+      title: 'Vista general del sistema',
+      subtitle: 'Estado hidráulico y equipos en tiempo real',
+    },
+    defaultSize: { w: 620, h: 92 },
+    minW: 320,
+    minH: 92,
+    resizeAxis: 'width',
+    rotatable: false,
+    bare: true,
+  },
+  divider: {
+    label: 'Divisor con etiqueta',
+    icon: IconDivider,
+    Component: DividerWidget,
+    defaultConfig: { label: 'SECCIÓN' },
+    defaultSize: { w: 520, h: 34 },
+    minW: 220,
+    minH: 34,
+    resizeAxis: 'width',
+    rotatable: false,
+    bare: true,
+  },
+  'operations-summary': {
+    label: 'Resumen operativo',
+    icon: IconActivity,
+    Component: OperationsSummaryWidget,
+    defaultConfig: {},
+    defaultSize: { w: 820, h: 150 },
+    minW: 650,
+    minH: 140,
+    resizeAxis: 'both',
+    rotatable: false,
+    bare: true,
+  },
+}
+
+const GROUP_BY_TYPE = {
+  pump: 'Proceso',
+  tank: 'Proceso',
+  levelbar: 'Proceso',
+  modeselect: 'Proceso',
+  setpoint: 'Proceso',
+  'pipe-straight': 'Tubería',
+  'pipe-elbow': 'Tubería',
+  'pipe-tee': 'Tubería',
+  'pipe-tee-up': 'Tubería',
+  levelhistory: 'Información',
+  'history-table': 'Información',
+  'operations-summary': 'Información',
+  panel: 'Estructura',
+  'section-header': 'Estructura',
+  divider: 'Estructura',
 }
 
 export const WIDGET_CATALOG = Object.entries(WIDGET_REGISTRY).map(([type, def]) => ({
   type,
   label: def.label,
   icon: def.icon,
+  group: GROUP_BY_TYPE[type] ?? 'Otros',
 }))
