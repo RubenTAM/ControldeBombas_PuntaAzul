@@ -1,7 +1,7 @@
 import { useId } from 'react'
 import { IconAlertTriangle } from '../icons.jsx'
 
-function PumpEquipment({ running, fault, showPorts }) {
+function PumpEquipment({ running, fault }) {
   const uid = useId().replace(/:/g, '')
   const metalId = `pump-metal-${uid}`
   const darkMetalId = `pump-dark-${uid}`
@@ -52,20 +52,6 @@ function PumpEquipment({ running, fault, showPorts }) {
       <path d="M42 108h57" stroke="#fff" strokeWidth="2" strokeLinecap="round" opacity=".35" />
       <path d="M46 79h48" stroke="#6bb8ef" strokeWidth="1.5" strokeLinecap="round" opacity=".65" />
 
-      {/* Descarga lateral y succión inferior terminan exactamente en los
-          bordes de la tarjeta, donde comienzan las bridas del widget. */}
-      {showPorts && (
-        <>
-          <path d="M104 86h38" stroke={`url(#${metalId})`} strokeWidth="16" />
-          {/* El mismo acople rectangular de la succión inferior, rotado
-              90° y pegado al cuerpo en la descarga lateral. */}
-          <rect x="104" y="78" width="15" height="16" fill={`url(#${metalId})`} stroke="#64748b" strokeWidth="1" />
-          <path d="M104 86h38" stroke="#1d8ff2" strokeWidth="8" />
-          <rect x="63" y="109" width="16" height="15" fill={`url(#${metalId})`} stroke="#64748b" strokeWidth="1" />
-          <path d="M71 111v13" stroke="#1d8ff2" strokeWidth="8" />
-        </>
-      )}
-
       {/* Indicador discreto de equipo energizado. */}
       <circle cx="89" cy="23" r="3.5" fill={fault ? '#ef4444' : running ? '#22c55e' : '#94a3b8'} filter={running || fault ? `url(#${glowId})` : undefined} />
       <path d="M32 117h29v6H32zM81 117h29v6H81z" fill={`url(#${darkMetalId})`} />
@@ -74,7 +60,7 @@ function PumpEquipment({ running, fault, showPorts }) {
   )
 }
 
-export default function PumpCard({ pump, onToggle, showPorts = false }) {
+export default function PumpCard({ pump, onToggle }) {
   const running = pump.running
   return (
     <div
@@ -101,7 +87,7 @@ export default function PumpCard({ pump, onToggle, showPorts = false }) {
       </div>
 
       <div className="absolute bottom-0 left-0">
-        <PumpEquipment running={running} fault={pump.fault} showPorts={showPorts} />
+        <PumpEquipment running={running} fault={pump.fault} />
       </div>
 
       {pump.mode === 'MANUAL' && (

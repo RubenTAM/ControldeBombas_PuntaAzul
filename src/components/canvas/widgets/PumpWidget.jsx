@@ -1,55 +1,10 @@
-// Pump card, wired into the pipe network: a short flanged inlet stub is
-// drawn at the bottom-center of the card so a Te or a curve dropped from
-// the palette can attach to it with the same "+" pipe-chain builder the
-// tank's outlet already uses. Same 16-unit stub / 24-unit flange
-// proportions as every other pipe piece and the tank's own outlet, so it
-// reads as part of the same system.
-//
-// A second, discharge flange sits on the card's own right edge at the
-// pump volute outlet (see PumpSideFlange + registry.js's port 1) — added
-// purely as an extra attach point; it doesn't touch the bottom/suction
-// flange's markup, sizing, or port math at all, so nothing already
-// connected there moves. It's drawn as an absolutely-positioned overlay
-// whose OUTWARD tip (the flange plate) sits flush with the widget's own
-// right edge (fx:1, unchanged box width — growing the box instead would
-// shift the bottom flange's fx:0.5 relative to the card).
-//
-// The tricky part: PumpCard itself is a fixed 142px card (see
-// PumpCard.jsx's `w-[142px]`) centered in a box that's normally wider
-// (166px by default, more once a chain-attach scales it up — see
-// scaleOfSource) — so there's a real, variable GAP between the card's
-// own visible edge and the box edge the port math is anchored to. A
-// fixed-length stub (sized only off `scale`, the way every other pipe
-// fitting here works) would either float away from the card with a
-// visible seam (too short) or bury itself inside the card (too long) —
-// exactly "la brida del lado queda flotando... tiene que estar pegada a
-// la card". So PumpSideFlange's stub is stretchy: it's handed the real
-// pixel gap (computed from the `width` prop below) and draws itself long
-// enough to always touch the card, while its flange-plate end stays a
-// fixed size and stays anchored to the true fx:1 tip either way.
-//
-// `bare: true` in the registry (see registry.js) — this component draws
-// its OWN card chrome instead of WidgetShell's (which would otherwise
-// double up with PumpCard's own border/shadow), and fills its box at a
-// FIXED height (resizeAxis: 'none' in the registry) so the flange's port
-// fraction always lands on the same real pixel position. The card sits
-// at the BOTTOM of the box (justify-end) so its own content height —
-// which grows a little with a fault row or the manual start/stop button
-// — never shifts where the flange itself sits; only the empty headroom
-// above the card changes.
+// Pump card with two continuous equipment connections. Each connection is
+// rendered as one SVG from the hydraulic body, across the card boundary,
+// to a flange outside the card. The registry ports sit at the far tips so
+// the canvas "+" builder attaches the next pipe after the flange.
 import { useId } from 'react'
 import PumpCard from '../../PumpCard.jsx'
-import { WATER_COLOR, MetalStops } from './PipeStraightWidget.jsx'
-
-// A Te/curve always draws its OWN flange, connected or not (see
-// PipeTeeWidget/PipeElbowWidget) — so a pump sitting directly under one
-// of those has to yield its own flange instead of stacking a second
-// plate right on top of it. A straight pipe does the opposite (it hides
-// its OWN end-flange once connected), so a pump feeding a straight run
-// still has to show its own — this set is what tells the two cases
-// apart instead of a blind "connected or not". Used independently for
-// each of the pump's two ports (bottom vs. side), via connectedTypes[0]
-// and connectedTypes[1] respectively.
+import { MetalStops } from './PipeStraightWidget.jsx'
 
 // Must match the pump's defaultSize.h in registry.js — a piece attached
 // onto an EXISTING (possibly bigger) pipe via the "+" chain builder is
@@ -61,138 +16,75 @@ import { WATER_COLOR, MetalStops } from './PipeStraightWidget.jsx'
 // of staying a fixed, now-mismatched 16px next to a bigger tube.
 const DEFAULT_HEIGHT = 212
 
-// PumpCard's own fixed width (see PumpCard.jsx's `w-[142px]`) — the pump
-// widget's box is slightly wider than this (166px default, see
-// registry.js), and PumpCard sits centered in it, so this is the number
-// PumpSideFlange's stretchy stub is measured against below.
+// Fixed card geometry. The connection roots are expressed in the card's
+// own coordinate space and the runs stretch from there to the widget ports.
 const CARD_WIDTH = 142
+const CARD_HEIGHT = 182
+const SIDE_ROOT_X = 104
+const SIDE_ROOT_Y = 144
+const BOTTOM_ROOT_Y = 167
 
 // The discharge leaves the pump volute, not the middle of the information
 // card. At the default 212px widget height this lands 38px below the old
 // center port and exactly on the outlet drawn inside PumpCard.
 const SIDE_PORT_FRACTION = 144 / DEFAULT_HEIGHT
 
-function PumpFlange({ scale }) {
+// One continuous pipe from the pump body to the exterior flange. The
+// horizontal and vertical variants share exactly the same 16px tube,
+// 8px water core, 24x6 flange and bolt offsets; only the axis changes.
+function PumpConnection({ orientation, length, scale }) {
   const uid = useId()
-  const gradId = `pumpFlange-${uid}`
-  const w = Math.round(48 * scale)
-  const h = Math.round(30 * scale)
-  return (
-    <svg
-      width={w}
-      height={h}
-      viewBox="0 0 48 30"
-      className="shrink-0 overflow-visible"
-      style={{ filter: 'drop-shadow(0 1.5px 2px rgba(11,18,32,0.3))' }}
-    >
-      <defs>
-        {/* shading runs across the stub's own width (its visible
-            "diameter"), same convention as the tank's outlet flange */}
-        <linearGradient id={gradId} gradientUnits="userSpaceOnUse" x1="16" y1="0" x2="32" y2="0">
-          <MetalStops />
-        </linearGradient>
-      </defs>
-      {/* The suction pipe always occupies the full reserved height. This
-          keeps the card fixed when a connected elbow/Te supplies the
-          joint's flange plate. */}
-      <rect x="16" y="0" width="16" height="30" fill={`url(#${gradId})`} />
-      <line x1="24" y1="0" x2="24" y2="30" stroke="#1d8ff2" strokeWidth="8" />
-      {/* path runs bottom-to-top (collar end -> pump end), matching the
-          Te-up branch's own water path direction (also bottom-to-top,
-          see PipeTeeUpWidget's "M36,23 L36,0") — the same
-          "animate-dashFlow" keyframe on two paths pointing opposite ways
-          reads as flow reversing right at the seam, which is exactly the
-          "va sentido contrario" bug: this stub is the continuation of
-          that branch, so it has to run the same direction. */}
-      <line
-        x1="24"
-        y1="30"
-        x2="24"
-        y2="0"
-        stroke={WATER_COLOR}
-        strokeWidth="8"
-        strokeLinecap="round"
-        strokeDasharray="16 16"
-        className="animate-dashFlow"
-      />
-      {/* flange plate — same 24-unit span as every other pipe piece,
-          always drawn (this is a permanent fitting, not a port state) */}
-      <rect x="12" y="20" width="24" height="6" rx="1" fill={`url(#${gradId})`} stroke="#4b5568" strokeWidth="1" />
-      <line x1="13" y1="21.2" x2="35" y2="21.2" stroke="#f8fafc" strokeWidth="0.7" opacity=".9" />
-      <circle cx="16" cy="23" r="1.5" fill="#202938" stroke="#d8dee8" strokeWidth="0.4" />
-      <circle cx="32" cy="23" r="1.5" fill="#202938" stroke="#d8dee8" strokeWidth="0.4" />
-    </svg>
-  )
-}
+  const gradId = `pumpConnection-${uid}`
+  const cross = 48 * scale
+  const center = cross / 2
+  const tube = 16 * scale
+  const water = 8 * scale
+  const plateSpan = 24 * scale
+  const plateThickness = 6 * scale
+  const clearance = 4 * scale
+  const plateStart = length - clearance - plateThickness
+  const horizontal = orientation === 'horizontal'
+  const svgW = horizontal ? length : cross
+  const svgH = horizontal ? cross : length
 
-// Same fitting, transposed 90° for a sideways (east-facing) discharge
-// port instead of the downward-facing suction one above. Unlike every
-// other pipe fitting in this file, its total length ISN'T just `scale`
-// — the flange-plate/bolts end is fixed size (scales normally), but the
-// stub before it stretches to `gap` (the real, possibly-scaled pixel gap
-// between PumpCard's fixed edge and the box's true right edge — see the
-// file-top comment), so the drawn stub always physically touches the
-// card no matter how wide that gap is, while the plate itself stays
-// pinned to the SVG's own right edge — which the wrapping overlay below
-// anchors to fx:1 — so attaching a piece here still lands exactly on the
-// flange with zero seam, same as before this fix.
-function PumpSideFlange({ gap, scale }) {
-  const uid = useId()
-  const gradId = `pumpSideFlange-${uid}`
-  const plateW = 6 * scale
-  const clearance = 4 * scale // small gap between plate and the true tip, same as every other fitting's flange-to-edge margin
-  // A literal 90° rotation of the lower 48x30 fitting must be 30x48.
-  // Keep that 30px nominal length even though the card-to-widget gap is
-  // smaller; the extra overlap sits inside the card outlet and removes
-  // the visual seam. Only stretch beyond 30 when an older saved widget
-  // has a wider-than-current box.
-  const nominalLength = 30 * scale
-  const w = Math.round(Math.max(nominalLength, gap + plateW + clearance))
-  const h = Math.round(48 * scale)
-  const cy = h / 2
-  const tubeH = 16 * scale
-  const plateX = w - clearance - plateW
-  // The tube continues under the flange all the way to the port, exactly
-  // like the lower fitting. The plate is then painted last, so the pipe
-  // or its animated water can never erase it visually.
-  const stubEnd = w
   return (
     <svg
-      width={w}
-      height={h}
-      viewBox={`0 0 ${w} ${h}`}
-      className="shrink-0 overflow-visible"
+      width={svgW}
+      height={svgH}
+      viewBox={`0 0 ${svgW} ${svgH}`}
+      className="overflow-visible"
       style={{ filter: 'drop-shadow(0 1.5px 2px rgba(11,18,32,0.3))' }}
     >
       <defs>
-        <linearGradient id={gradId} gradientUnits="userSpaceOnUse" x1="0" y1={cy - tubeH / 2} x2="0" y2={cy + tubeH / 2}>
+        <linearGradient
+          id={gradId}
+          gradientUnits="userSpaceOnUse"
+          x1={horizontal ? 0 : center - tube / 2}
+          y1={horizontal ? center - tube / 2 : 0}
+          x2={horizontal ? 0 : center + tube / 2}
+          y2={horizontal ? center + tube / 2 : 0}
+        >
           <MetalStops />
         </linearGradient>
       </defs>
-      {/* stretchy discharge stub — touches the card at x:0, and always
-          reaches out to stubEnd: the flange plate's own start (plateX)
-          normally, or all the way to the SVG's own right edge (w) when
-          the plate itself is hidden, so the bridge never stops short */}
-      <rect x="0" y={cy - tubeH / 2} width={Math.max(stubEnd, 0)} height={tubeH} fill={`url(#${gradId})`} />
-      <line x1="0" y1={cy} x2={Math.max(stubEnd, 0)} y2={cy} stroke="#1d8ff2" strokeWidth={tubeH * 0.5} />
-      {/* flow runs outward end -> pump end, same convention as PumpFlange's
-          own bottom-to-top line */}
-      <line
-        x1={Math.max(stubEnd - 2, 2)}
-        y1={cy}
-        x2="0"
-        y2={cy}
-        stroke={WATER_COLOR}
-        strokeWidth={tubeH * 0.5}
-        strokeLinecap="round"
-        strokeDasharray="16 16"
-        className="animate-dashFlow"
-      />
-      {/* Same 24x6 plate and bolt offsets as PumpFlange, rotated 90°. */}
-      <rect x={plateX} y={cy - 12 * scale} width={plateW} height={24 * scale} rx="1" fill={`url(#${gradId})`} stroke="#4b5568" strokeWidth={1 * scale} />
-      <line x1={plateX + 1.2 * scale} y1={cy - 11 * scale} x2={plateX + 1.2 * scale} y2={cy + 11 * scale} stroke="#f8fafc" strokeWidth={0.7 * scale} opacity=".9" />
-      <circle cx={plateX + plateW / 2} cy={cy - 8 * scale} r={1.5 * scale} fill="#202938" stroke="#d8dee8" strokeWidth={0.4 * scale} />
-      <circle cx={plateX + plateW / 2} cy={cy + 8 * scale} r={1.5 * scale} fill="#202938" stroke="#d8dee8" strokeWidth={0.4 * scale} />
+
+      {horizontal ? (
+        <>
+          <rect x="0" y={center - tube / 2} width={length} height={tube} fill={`url(#${gradId})`} />
+          <rect x="0" y={center - water / 2} width={length} height={water} fill="#1d8ff2" />
+          <rect x={plateStart} y={center - plateSpan / 2} width={plateThickness} height={plateSpan} rx="1" fill={`url(#${gradId})`} stroke="#4b5568" strokeWidth={scale} />
+          <circle cx={plateStart + plateThickness / 2} cy={center - 8 * scale} r={1.5 * scale} fill="#202938" stroke="#d8dee8" strokeWidth={0.4 * scale} />
+          <circle cx={plateStart + plateThickness / 2} cy={center + 8 * scale} r={1.5 * scale} fill="#202938" stroke="#d8dee8" strokeWidth={0.4 * scale} />
+        </>
+      ) : (
+        <>
+          <rect x={center - tube / 2} y="0" width={tube} height={length} fill={`url(#${gradId})`} />
+          <rect x={center - water / 2} y="0" width={water} height={length} fill="#1d8ff2" />
+          <rect x={center - plateSpan / 2} y={plateStart} width={plateSpan} height={plateThickness} rx="1" fill={`url(#${gradId})`} stroke="#4b5568" strokeWidth={scale} />
+          <circle cx={center - 8 * scale} cy={plateStart + plateThickness / 2} r={1.5 * scale} fill="#202938" stroke="#d8dee8" strokeWidth={0.4 * scale} />
+          <circle cx={center + 8 * scale} cy={plateStart + plateThickness / 2} r={1.5 * scale} fill="#202938" stroke="#d8dee8" strokeWidth={0.4 * scale} />
+        </>
+      )}
     </svg>
   )
 }
@@ -200,46 +92,50 @@ function PumpSideFlange({ gap, scale }) {
 export default function PumpWidget({ telemetry, config, onConfigChange, editMode, width, height }) {
   const pumpId = config.pumpId ?? 'p1'
   const pump = telemetry.pumps[pumpId]
-  const scale = height ? height / DEFAULT_HEIGHT : 1
-  // Real pixel distance from PumpCard's fixed edge to the box's own right
-  // edge (see the file-top comment) — falls back to the registry default
-  // (166) if `width` isn't passed for some reason, same math either way.
-  const sideGap = Math.max(0, ((width ?? 166) - CARD_WIDTH) / 2)
+  const widgetW = width ?? 166
+  const widgetH = height ?? DEFAULT_HEIGHT
+  const scale = widgetH / DEFAULT_HEIGHT
+  const sidePortY = widgetH * SIDE_PORT_FRACTION
+  const cardTop = sidePortY - SIDE_ROOT_Y
+  const cardLeft = (widgetW - CARD_WIDTH) / 2
+  const sideRootX = cardLeft + SIDE_ROOT_X
+  const sideLength = widgetW - sideRootX
+  const bottomRootY = cardTop + BOTTOM_ROOT_Y
+  const bottomLength = widgetH - bottomRootY
 
   return (
-    <div className="relative flex h-full w-full flex-col items-center justify-end">
+    <div className="relative h-full w-full overflow-visible">
       {editMode && (
         <select
           value={pumpId}
           onChange={(e) => onConfigChange({ pumpId: e.target.value })}
-          className="mb-2 w-full rounded-lg border border-ink-100 bg-navy-50/60 px-2 py-1.5 text-xs font-semibold text-ink-500"
+          className="absolute bottom-full left-0 mb-2 w-full rounded-lg border border-ink-100 bg-navy-50/60 px-2 py-1.5 text-xs font-semibold text-ink-500"
         >
           <option value="p1">Bomba 1</option>
           <option value="p2">Bomba 2</option>
         </select>
       )}
-      <PumpCard pump={pump} onToggle={telemetry.setPumpRunning} showPorts />
-      {/* drawn unless a Te/curve — which always shows its own — is the
-          one connected here; a straight pipe hides its OWN end-flange
-          instead, so this still shows in that case (bomba -> recta). */}
-      <PumpFlange scale={scale} />
-      {/* discharge port — an absolutely-positioned overlay flush with the
-          widget's own right edge (fx:1), aligned with the volute outlet
-          (fy:144/212) — see the file-top comment for why growing the box
-          instead isn't an option: it would shift the bottom port's fx:0.5
-          relative to the card, moving every already-connected suction
-          joint. PumpSideFlange's own stub bridges the real gap up to that
-          edge so it visually touches the card either way — this renders
-          UNCONDITIONALLY (only its flange plate is conditional, via
-          hidePlate) because the bridge has to stay up even when an
-          elbow/Te connected here draws its own plate; hiding the whole
-          overlay in that case was what let the connected piece float
-          away from the card again. */}
+
       <div
-        className="pointer-events-none absolute right-0 -translate-y-1/2"
-        style={{ top: `${SIDE_PORT_FRACTION * 100}%` }}
+        className="absolute"
+        style={{ left: cardLeft, top: cardTop, width: CARD_WIDTH, height: CARD_HEIGHT }}
       >
-        <PumpSideFlange gap={sideGap} scale={scale} />
+        <PumpCard pump={pump} onToggle={telemetry.setPumpRunning} />
+      </div>
+
+      {/* These overlays each contain the entire run from the pump body to
+          the exterior flange. No card clipping and no stitched SVGs. */}
+      <div
+        className="pointer-events-none absolute"
+        style={{ left: sideRootX, top: sidePortY - 24 * scale }}
+      >
+        <PumpConnection orientation="horizontal" length={sideLength} scale={scale} />
+      </div>
+      <div
+        className="pointer-events-none absolute"
+        style={{ left: widgetW / 2 - 24 * scale, top: bottomRootY }}
+      >
+        <PumpConnection orientation="vertical" length={bottomLength} scale={scale} />
       </div>
     </div>
   )

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import WidgetShell, { WidgetReachHandle } from './WidgetShell.jsx'
 import { WIDGET_REGISTRY } from './registry.js'
 import { getPortWorld, placeAttached, CONNECT_THRESHOLD } from './ports.js'
@@ -65,8 +65,79 @@ export default function DashboardCanvas({ telemetry, canvas }) {
     setGuideLine,
   } = canvas
   const canvasRef = useRef(null)
+  const [layoutWidth, setLayoutWidth] = useState(0)
   const [openPicker, setOpenPicker] = useState(null) // { widgetId, portIndex, port }
   const isDrawingRef = useRef(false)
+
+  // The dashboard is vertically scrollable, but it has a real, fixed
+  // horizontal layout width. Keep enough inset for the floating edit
+  // controls too: a widget at x=0 is technically inside the canvas, while
+  // its remove/move buttons (negative offsets) are not.
+  useEffect(() => {
+    const el = canvasRef.current
+    if (!el) return undefined
+    const measure = () => setLayoutWidth(el.clientWidth)
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  const constrainToLayout = (widget, patch = {}) => {
+    const next = { ...widget, ...patch }
+    const width = layoutWidth || canvasRef.current?.clientWidth || 0
+    if (!width) return next
+
+    const def = WIDGET_REGISTRY[next.type]
+    const minW = def?.minW ?? 20
+    const minH = def?.minH ?? 20
+    const angle = (((next.rotation || 0) % 360) * Math.PI) / 180
+    const cos = Math.abs(Math.cos(angle))
+    const sin = Math.abs(Math.sin(angle))
+    const available = Math.max(1, width - CANVAS_PAD * 2)
+
+    // If an old saved widget (or a very wide palette item on a narrow
+    // screen) cannot fit at all, reduce it before positioning it. The
+    // common 0/90-degree rotations keep their proportions and minimums.
+    let visualW = next.w * cos + next.h * sin
+    if (visualW > available) {
+      const scale = available / visualW
+      next.w = Math.max(Math.min(minW, available), next.w * scale)
+      next.h = Math.max(Math.min(minH, available), next.h * scale)
+      visualW = next.w * cos + next.h * sin
+    }
+
+    const visualH = next.w * sin + next.h * cos
+    const offsetX = (next.w - visualW) / 2
+    const offsetY = (next.h - visualH) / 2
+    const minX = CANVAS_PAD - offsetX
+    const maxX = width - CANVAS_PAD - visualW - offsetX
+
+    // When a widget's own minimum size is wider than the available area,
+    // centering is the only non-arbitrary fallback. Normally minX <= maxX.
+    next.x = maxX < minX ? (width - next.w) / 2 : Math.min(maxX, Math.max(minX, next.x))
+    next.y = Math.max(CANVAS_PAD - offsetY, next.y)
+    return next
+  }
+
+  // Recover layouts already persisted with negative/off-screen positions,
+  // and re-fit them if the sidebar/window later makes the canvas narrower.
+  useEffect(() => {
+    if (!layoutWidth) return
+    widgets.forEach((widget) => {
+      const bounded = constrainToLayout(widget)
+      if (
+        Math.abs(bounded.x - widget.x) > 0.01 ||
+        Math.abs(bounded.y - widget.y) > 0.01 ||
+        Math.abs(bounded.w - widget.w) > 0.01 ||
+        Math.abs(bounded.h - widget.h) > 0.01
+      ) {
+        updateTransform(widget.id, { x: bounded.x, y: bounded.y, w: bounded.w, h: bounded.h })
+      }
+    })
+    // constrainToLayout intentionally reads the current registry and width.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layoutWidth, widgets, updateTransform])
 
   // every port on every placed widget, in canvas coordinates, plus
   // whether another widget's port already sits right on top of it (=
@@ -121,20 +192,15 @@ export default function DashboardCanvas({ telemetry, canvas }) {
     return map
   }, [ports])
 
-  // how far the furthest widget's bottom-right corner reaches, so the
-  // scrollable content area (see the return statement) always covers
-  // every placed widget instead of just whatever happened to fit in the
-  // viewport when the canvas first rendered — this is what lets a widget
-  // like "Historico de nivel" actually grow past the visible area: you
-  // scroll to it instead of the resize silently hitting an invisible wall.
-  const contentBounds = useMemo(() => {
-    let maxX = 0
+  // The layout may grow downward and scroll, but never sideways. Track
+  // only the deepest bottom edge; horizontal placement is constrained by
+  // constrainToLayout above.
+  const contentHeight = useMemo(() => {
     let maxY = 0
     widgets.forEach((w) => {
-      maxX = Math.max(maxX, w.x + w.w)
       maxY = Math.max(maxY, w.y + w.h)
     })
-    return { width: maxX, height: maxY }
+    return maxY
   }, [widgets])
 
   // While dragging a widget (a plain x/y move, not a resize or rotate),
@@ -182,14 +248,21 @@ export default function DashboardCanvas({ telemetry, canvas }) {
     // every drop/draw coordinate by a stray 28px versus what's actually
     // under the cursor — confirmed by comparing a real port's rendered
     // screen position against this conversion. Also add back however far
-    // the canvas is currently scrolled, since the inner box can now be
-    // bigger than the visible viewport (see contentBounds) and rect only
-    // describes the VISIBLE portion of it.
+    // the canvas is currently scrolled vertically, since long layouts can
+    // be taller than the visible viewport and rect only describes that
+    // visible portion.
     const rawX = e.clientX - rect.left + canvasRef.current.scrollLeft - def.defaultSize.w / 2
     const rawY = e.clientY - rect.top + canvasRef.current.scrollTop - def.defaultSize.h / 2
-    const x = Math.round(rawX / GRID) * GRID
-    const y = Math.round(rawY / GRID) * GRID
-    addWidgetAt(type, x, y, def.defaultSize, def.defaultConfig)
+    const candidate = {
+      type,
+      x: Math.round(rawX / GRID) * GRID,
+      y: Math.round(rawY / GRID) * GRID,
+      w: def.defaultSize.w,
+      h: def.defaultSize.h,
+      rotation: 0,
+    }
+    const bounded = constrainToLayout(candidate)
+    addWidgetAt(type, bounded.x, bounded.y, { w: bounded.w, h: bounded.h }, def.defaultConfig)
     setOpenPicker(null)
   }
 
@@ -387,22 +460,16 @@ export default function DashboardCanvas({ telemetry, canvas }) {
         editMode ? 'overflow-auto' : 'overflow-hidden',
       ].join(' ')}
     >
-      {/* Scrollable drawing surface, sized to fit every widget's actual
-          bounds (at least the visible viewport) instead of being pinned
-          exactly to whatever's currently visible — a widget resized or
-          placed past what's on screen used to just get clipped with no
-          way to scroll to it (see contentBounds above). Only grows/scrolls
-          in edit mode: outside of it there's nothing left to reach that
-          isn't already part of the finished layout, so it goes back to a
-          plain, non-scrolling box matching the visible area exactly. */}
+      {/* The surface grows downward so long dashboards remain scrollable,
+          while its width stays locked to the visible layout. */}
       <div
         className={editMode ? 'relative' : 'absolute inset-0'}
         style={
           editMode
             ? {
                 padding: CANVAS_PAD,
-                width: `max(100%, ${contentBounds.width + CANVAS_PAD * 2}px)`,
-                height: `max(100%, ${contentBounds.height + CANVAS_PAD * 2}px)`,
+                width: '100%',
+                height: `max(100%, ${contentHeight + CANVAS_PAD * 2}px)`,
                 backgroundImage: 'radial-gradient(circle, #c7ccdb 1px, transparent 1px)',
                 backgroundSize: `${GRID}px ${GRID}px`,
               }
@@ -437,7 +504,7 @@ export default function DashboardCanvas({ telemetry, canvas }) {
               minH={minH}
               resizeAxis={resizeAxis}
               rotatable={rotatable}
-              onTransform={(patch) => updateTransform(w.id, snapMove(w, patch))}
+              onTransform={(patch) => updateTransform(w.id, constrainToLayout(w, snapMove(w, patch)))}
               onFront={() => bringToFront(w.id)}
               onBack={w.type === 'panel' ? () => sendToBack(w.id) : undefined}
               onRemove={() => removeWidget(w.id)}
@@ -482,7 +549,7 @@ export default function DashboardCanvas({ telemetry, canvas }) {
                 minH={def.minH}
                 resizeAxis={def.resizeAxis}
                 rotatable={def.rotatable}
-                onTransform={(patch) => updateTransform(w.id, snapMove(w, patch))}
+                onTransform={(patch) => updateTransform(w.id, constrainToLayout(w, snapMove(w, patch)))}
                 onFront={() => bringToFront(w.id)}
                 onBack={w.type === 'panel' ? () => sendToBack(w.id) : undefined}
                 onRemove={() => removeWidget(w.id)}
