@@ -22,6 +22,8 @@ const CANVAS_PAD = 28
 // on purpose: it should grab well before the piece is already close
 // enough to visually read as connected.
 const SNAP_THRESHOLD = 26
+const LAYOUT_SNAP_THRESHOLD = 10
+const snapGrid = (value) => Math.round(value / GRID) * GRID
 
 // The 3 piece types offered from every open port's "+" menu.
 const ATTACH_CHOICES = [
@@ -96,6 +98,17 @@ export default function DashboardCanvas({ telemetry, canvas }) {
     const cos = Math.abs(Math.cos(angle))
     const sin = Math.abs(Math.sin(angle))
     const available = Math.max(1, width - CANVAS_PAD * 2)
+    const isLayoutWidget = !def?.ports?.length
+
+    // Cards and panels belong to the visual grid. Pipe-system pieces keep
+    // their exact port geometry instead, otherwise rounding would reopen
+    // connections that were positioned by trigonometry.
+    if (isLayoutWidget) {
+      next.x = snapGrid(next.x)
+      next.y = snapGrid(next.y)
+      if (def?.resizeAxis === 'both' || def?.resizeAxis === 'width') next.w = Math.max(minW, snapGrid(next.w))
+      if (def?.resizeAxis === 'both' || def?.resizeAxis === 'height') next.h = Math.max(minH, snapGrid(next.h))
+    }
 
     // If an old saved widget (or a very wide palette item on a narrow
     // screen) cannot fit at all, reduce it before positioning it. The
@@ -105,19 +118,26 @@ export default function DashboardCanvas({ telemetry, canvas }) {
       const scale = available / visualW
       next.w = Math.max(Math.min(minW, available), next.w * scale)
       next.h = Math.max(Math.min(minH, available), next.h * scale)
+      if (isLayoutWidget) {
+        if (def?.resizeAxis === 'both' || def?.resizeAxis === 'width') next.w = Math.max(Math.min(minW, available), Math.floor(next.w / GRID) * GRID)
+        if (def?.resizeAxis === 'both' || def?.resizeAxis === 'height') next.h = Math.max(minH, snapGrid(next.h))
+      }
       visualW = next.w * cos + next.h * sin
     }
 
     const visualH = next.w * sin + next.h * cos
     const offsetX = (next.w - visualW) / 2
     const offsetY = (next.h - visualH) / 2
-    const minX = CANVAS_PAD - offsetX
-    const maxX = width - CANVAS_PAD - visualW - offsetX
+    const rawMinX = CANVAS_PAD - offsetX
+    const rawMaxX = width - CANVAS_PAD - visualW - offsetX
+    const minX = isLayoutWidget ? Math.ceil(rawMinX / GRID) * GRID : rawMinX
+    const maxX = isLayoutWidget ? Math.floor(rawMaxX / GRID) * GRID : rawMaxX
 
     // When a widget's own minimum size is wider than the available area,
     // centering is the only non-arbitrary fallback. Normally minX <= maxX.
     next.x = maxX < minX ? (width - next.w) / 2 : Math.min(maxX, Math.max(minX, next.x))
-    next.y = Math.max(CANVAS_PAD - offsetY, next.y)
+    const minY = CANVAS_PAD - offsetY
+    next.y = Math.max(isLayoutWidget ? Math.ceil(minY / GRID) * GRID : minY, next.y)
     return next
   }
 
@@ -231,6 +251,47 @@ export default function DashboardCanvas({ telemetry, canvas }) {
       })
     })
     return best ? { ...patch, x: patch.x + best.dx, y: patch.y + best.dy } : patch
+  }
+
+  // Magnetic alignment for panels/cards: match left, center and right (or
+  // top, center and bottom) with neighboring layout widgets. The final
+  // constrainToLayout pass still normalizes everything to the 20px grid.
+  const snapLayoutTransform = (widget, patch) => {
+    const def = WIDGET_REGISTRY[widget.type]
+    if (def?.ports?.length || patch.rotation !== undefined) return snapMove(widget, patch)
+
+    const trial = { ...widget, ...patch }
+    const others = widgets.filter((other) => other.id !== widget.id && !WIDGET_REGISTRY[other.type]?.ports?.length)
+    const closest = (values, targets) => {
+      let best = null
+      values.forEach((value) => targets.forEach((target) => {
+        const delta = target - value
+        if (Math.abs(delta) <= LAYOUT_SNAP_THRESHOLD && (best === null || Math.abs(delta) < Math.abs(best))) best = delta
+      }))
+      return best
+    }
+
+    if (patch.x !== undefined && patch.y !== undefined) {
+      const myX = [trial.x, trial.x + trial.w / 2, trial.x + trial.w]
+      const myY = [trial.y, trial.y + trial.h / 2, trial.y + trial.h]
+      const targetX = others.flatMap((other) => [other.x, other.x + other.w / 2, other.x + other.w])
+      const targetY = others.flatMap((other) => [other.y, other.y + other.h / 2, other.y + other.h])
+      const dx = closest(myX, targetX)
+      const dy = closest(myY, targetY)
+      return { ...patch, x: trial.x + (dx ?? 0), y: trial.y + (dy ?? 0) }
+    }
+
+    if (patch.w !== undefined) {
+      const targetX = others.flatMap((other) => [other.x, other.x + other.w / 2, other.x + other.w])
+      const dx = closest([trial.x + trial.w], targetX)
+      if (dx !== null) patch = { ...patch, w: trial.w + dx }
+    }
+    if (patch.h !== undefined) {
+      const targetY = others.flatMap((other) => [other.y, other.y + other.h / 2, other.y + other.h])
+      const dy = closest([trial.y + trial.h], targetY)
+      if (dy !== null) patch = { ...patch, h: trial.h + dy }
+    }
+    return patch
   }
 
   const placePaletteWidget = (type, clientX, clientY) => {
@@ -540,7 +601,7 @@ export default function DashboardCanvas({ telemetry, canvas }) {
               minH={minH}
               resizeAxis={resizeAxis}
               rotatable={rotatable}
-              onTransform={(patch) => updateTransform(w.id, constrainToLayout(w, snapMove(w, patch)))}
+              onTransform={(patch) => updateTransform(w.id, constrainToLayout(w, snapLayoutTransform(w, patch)))}
               onFront={() => bringToFront(w.id)}
               onBack={w.type === 'panel' ? () => sendToBack(w.id) : undefined}
               onRemove={() => removeWidget(w.id)}
@@ -585,7 +646,7 @@ export default function DashboardCanvas({ telemetry, canvas }) {
                 minH={def.minH}
                 resizeAxis={def.resizeAxis}
                 rotatable={def.rotatable}
-                onTransform={(patch) => updateTransform(w.id, constrainToLayout(w, snapMove(w, patch)))}
+                onTransform={(patch) => updateTransform(w.id, constrainToLayout(w, snapLayoutTransform(w, patch)))}
                 onFront={() => bringToFront(w.id)}
                 onBack={w.type === 'panel' ? () => sendToBack(w.id) : undefined}
                 onRemove={() => removeWidget(w.id)}
