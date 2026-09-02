@@ -142,7 +142,10 @@ export const WIDGET_REGISTRY = {
     Component: PipeStraightWidget,
     defaultConfig: {},
     defaultSize: { w: 140, h: 24 },
-    minW: 40,
+    // One grid cell is enough for a connected transition. The previous
+    // 40px floor forced short vertical runs to overshoot their elbow/tank
+    // even when the resize handle had already reached its minimum.
+    minW: 20,
     minH: 24,
     resizeAxis: 'width',
     rotatable: true,
