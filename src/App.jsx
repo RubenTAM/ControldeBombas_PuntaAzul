@@ -14,13 +14,20 @@ export default function App() {
   const canvas = useCanvas()
   const broker = useBrokerConnections()
   const [active, setActive] = useState('dashboard')
+  const [navOpen, setNavOpen] = useState(false)
 
   return (
     <div className="flex h-screen overflow-hidden bg-navy-50">
-      <Sidebar active={active} onNavigate={setActive} alarmCount={telemetry.activeAlarms.length} />
+      <Sidebar
+        active={active}
+        onNavigate={setActive}
+        alarmCount={telemetry.activeAlarms.length}
+        open={navOpen}
+        onClose={() => setNavOpen(false)}
+      />
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <Header alarmCount={telemetry.activeAlarms.length} onMenu={() => {}} />
+        <Header alarmCount={telemetry.activeAlarms.length} onMenu={() => setNavOpen(true)} />
 
         <main className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-5 lg:gap-5 lg:p-6">
           {active === 'dashboard' ? (

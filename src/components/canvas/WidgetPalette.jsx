@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { WIDGET_CATALOG } from './registry.js'
 import { IconPencil } from '../../icons.jsx'
 
@@ -12,7 +13,48 @@ import { IconPencil } from '../../icons.jsx'
 // control and over whatever was already drawn there.
 export default function WidgetPalette({ canvas }) {
   const { drawMode, toggleDrawMode, pendingPieces, acceptSketch, cancelSketch } = canvas
+  const [pointerDrag, setPointerDrag] = useState(null)
+  const cleanupRef = useRef(null)
   const groups = ['Proceso', 'Tubería', 'Información', 'Estructura']
+
+  useEffect(() => () => cleanupRef.current?.(), [])
+
+  const startPointerDrag = (event, widget) => {
+    if (!event.isPrimary || (event.pointerType === 'mouse' && event.button !== 0)) return
+    event.preventDefault()
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+    cleanupRef.current?.()
+    const pointerId = event.pointerId
+    setPointerDrag({ type: widget.type, label: widget.label, x: event.clientX, y: event.clientY })
+
+    const move = (nextEvent) => {
+      if (nextEvent.pointerId !== pointerId) return
+      nextEvent.preventDefault()
+      setPointerDrag((current) => current && { ...current, x: nextEvent.clientX, y: nextEvent.clientY })
+    }
+    const finish = (nextEvent) => {
+      if (nextEvent.pointerId !== pointerId) return
+      window.dispatchEvent(new CustomEvent('puntaazul:widget-pointer-drop', {
+        detail: { type: widget.type, clientX: nextEvent.clientX, clientY: nextEvent.clientY },
+      }))
+      setPointerDrag(null)
+      cleanupRef.current?.()
+    }
+    const cancel = (nextEvent) => {
+      if (nextEvent.pointerId !== pointerId) return
+      setPointerDrag(null)
+      cleanupRef.current?.()
+    }
+    window.addEventListener('pointermove', move, { passive: false })
+    window.addEventListener('pointerup', finish)
+    window.addEventListener('pointercancel', cancel)
+    cleanupRef.current = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', finish)
+      window.removeEventListener('pointercancel', cancel)
+    }
+  }
+
   return (
     <div className="grid shrink-0 grid-cols-1 gap-3 rounded-2xl border border-dashed border-navy-200 bg-navy-50/50 p-3 xl:grid-cols-2">
       {groups.map((group) => (
@@ -23,9 +65,8 @@ export default function WidgetPalette({ canvas }) {
             return (
               <div
                 key={w.type}
-                draggable
-                onDragStart={(e) => e.dataTransfer.setData('text/widget-type', w.type)}
-                className="flex cursor-grab items-center gap-2 rounded-xl border border-ink-100 bg-white px-3 py-2 text-xs font-semibold text-ink-600 shadow-sm transition-colors hover:border-navy-200 hover:bg-navy-50 active:cursor-grabbing"
+                onPointerDown={(event) => startPointerDrag(event, w)}
+                className="flex touch-none select-none cursor-grab items-center gap-2 rounded-xl border border-ink-100 bg-white px-3 py-2 text-xs font-semibold text-ink-600 shadow-sm transition-colors hover:border-navy-200 hover:bg-navy-50 active:cursor-grabbing"
               >
                 <Icon className="h-4 w-4 text-navy-500" />
                 {w.label}
@@ -37,7 +78,7 @@ export default function WidgetPalette({ canvas }) {
             (!pendingPieces ? (
               <button
                 onClick={toggleDrawMode}
-                title="Dibuja con el mouse por donde quieres que pase la tubería; al soltar el clic te muestra el resultado para aceptar o cancelar. Si el inicio del trazo queda cerca de un puerto abierto, la tubería nace pegada a él, del mismo diámetro."
+                title="Dibuja con mouse, dedo o Apple Pencil por donde quieres que pase la tubería; al soltar te muestra el resultado para aceptar o cancelar."
                 className={[
                   'flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold shadow-sm ring-1 transition-colors',
                   drawMode
@@ -69,6 +110,14 @@ export default function WidgetPalette({ canvas }) {
             ))}
         </div>
       ))}
+      {pointerDrag && (
+        <div
+          className="pointer-events-none fixed z-[100] flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-xl border border-live-400 bg-white/95 px-3 py-2 text-xs font-bold text-navy-600 shadow-pop"
+          style={{ left: pointerDrag.x, top: pointerDrag.y }}
+        >
+          {pointerDrag.label}
+        </div>
+      )}
     </div>
   )
 }

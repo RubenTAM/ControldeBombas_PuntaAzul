@@ -67,7 +67,8 @@ export default function DashboardCanvas({ telemetry, canvas }) {
   const canvasRef = useRef(null)
   const [layoutWidth, setLayoutWidth] = useState(0)
   const [openPicker, setOpenPicker] = useState(null) // { widgetId, portIndex, port }
-  const isDrawingRef = useRef(false)
+  const isDrawingRef = useRef(null)
+  const strokePointsRef = useRef([])
 
   // The dashboard is vertically scrollable, but it has a real, fixed
   // horizontal layout width. Keep enough inset for the floating edit
@@ -232,12 +233,11 @@ export default function DashboardCanvas({ telemetry, canvas }) {
     return best ? { ...patch, x: patch.x + best.dx, y: patch.y + best.dy } : patch
   }
 
-  const handleDrop = (e) => {
-    e.preventDefault()
-    const type = e.dataTransfer.getData('text/widget-type')
+  const placePaletteWidget = (type, clientX, clientY) => {
     const def = WIDGET_REGISTRY[type]
     if (!def || !canvasRef.current) return
     const rect = canvasRef.current.getBoundingClientRect()
+    if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) return
     // Widgets/ports are absolutely positioned inside the padded inner box,
     // but CSS resolves an absolutely-positioned child's left/top against
     // that box's OWN edge (its padding box, which starts at the same place
@@ -251,8 +251,8 @@ export default function DashboardCanvas({ telemetry, canvas }) {
     // the canvas is currently scrolled vertically, since long layouts can
     // be taller than the visible viewport and rect only describes that
     // visible portion.
-    const rawX = e.clientX - rect.left + canvasRef.current.scrollLeft - def.defaultSize.w / 2
-    const rawY = e.clientY - rect.top + canvasRef.current.scrollTop - def.defaultSize.h / 2
+    const rawX = clientX - rect.left + canvasRef.current.scrollLeft - def.defaultSize.w / 2
+    const rawY = clientY - rect.top + canvasRef.current.scrollTop - def.defaultSize.h / 2
     const candidate = {
       type,
       x: Math.round(rawX / GRID) * GRID,
@@ -265,6 +265,23 @@ export default function DashboardCanvas({ telemetry, canvas }) {
     addWidgetAt(type, bounded.x, bounded.y, { w: bounded.w, h: bounded.h }, def.defaultConfig)
     setOpenPicker(null)
   }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    placePaletteWidget(e.dataTransfer.getData('text/widget-type'), e.clientX, e.clientY)
+  }
+
+  // HTML drag-and-drop is unreliable on iPadOS. WidgetPalette emits this
+  // pointer-based drop for touch/pen/mouse and this canvas applies the
+  // exact same positioning and boundary rules as the desktop drop path.
+  useEffect(() => {
+    const handlePointerDrop = (event) => {
+      const { type, clientX, clientY } = event.detail || {}
+      placePaletteWidget(type, clientX, clientY)
+    }
+    window.addEventListener('puntaazul:widget-pointer-drop', handlePointerDrop)
+    return () => window.removeEventListener('puntaazul:widget-pointer-drop', handlePointerDrop)
+  })
 
   // How much bigger/smaller the source widget currently is than the size
   // its own geometry (tube thickness, flange, etc.) was authored at — so
@@ -332,21 +349,28 @@ export default function DashboardCanvas({ telemetry, canvas }) {
     return { port: { x: match.x, y: match.y, dir: match.dir }, scale: scaleOfSource(match.widgetId) }
   }
 
-  const handleDrawMouseDown = (e) => {
+  const handleDrawPointerDown = (e) => {
+    if (!e.isPrimary) return
+    e.preventDefault()
     e.stopPropagation()
-    isDrawingRef.current = true
+    e.currentTarget.setPointerCapture?.(e.pointerId)
+    isDrawingRef.current = e.pointerId
     setGuideLine(null)
-    setStrokePoints([toCanvasPoint(e)])
+    const firstPoint = toCanvasPoint(e)
+    strokePointsRef.current = [firstPoint]
+    setStrokePoints([firstPoint])
   }
 
-  const handleDrawMouseMove = (e) => {
-    if (!isDrawingRef.current) return
+  const handleDrawPointerMove = (e) => {
+    if (isDrawingRef.current !== e.pointerId) return
+    e.preventDefault()
     const pt = toCanvasPoint(e)
-    const last = strokePoints[strokePoints.length - 1]
+    const last = strokePointsRef.current[strokePointsRef.current.length - 1]
     // thin out samples as they arrive — a real mousemove stream fires far
     // more often than the shape of the stroke needs
     if (last && Math.hypot(pt.x - last.x, pt.y - last.y) < 4) return
-    const next = [...strokePoints, pt]
+    const next = [...strokePointsRef.current, pt]
+    strokePointsRef.current = next
     setStrokePoints(next)
     // Run the same simplify + orthogonalize stages as the final build. The
     // guide must describe the geometry that will actually be accepted; the
@@ -355,22 +379,34 @@ export default function DashboardCanvas({ telemetry, canvas }) {
     setGuideLine(findAlignmentGuide(orthogonalize(simplify(next))))
   }
 
-  const finishStroke = () => {
-    if (!isDrawingRef.current) return
-    isDrawingRef.current = false
+  const finishStroke = (e) => {
+    if (e && isDrawingRef.current !== e.pointerId) return
+    if (isDrawingRef.current === null) return
+    const points = strokePointsRef.current
+    isDrawingRef.current = null
     setGuideLine(null)
-    if (strokePoints.length < 2) {
+    if (points.length < 2) {
+      strokePointsRef.current = []
       setStrokePoints([])
       return
     }
-    const anchor = findStartAnchor(strokePoints[0])
-    const endAnchor = findEndAnchor(strokePoints[strokePoints.length - 1], anchor)
-    const pieces = sketchToPieces(strokePoints, WIDGET_REGISTRY, anchor, endAnchor)
+    const anchor = findStartAnchor(points[0])
+    const endAnchor = findEndAnchor(points[points.length - 1], anchor)
+    const pieces = sketchToPieces(points, WIDGET_REGISTRY, anchor, endAnchor)
     if (pieces.length === 0) {
+      strokePointsRef.current = []
       setStrokePoints([])
       return
     }
     setPendingPieces(pieces)
+  }
+
+  const cancelActiveStroke = (e) => {
+    if (isDrawingRef.current !== e.pointerId) return
+    isDrawingRef.current = null
+    strokePointsRef.current = []
+    setGuideLine(null)
+    setStrokePoints([])
   }
 
   // One-click "fill this panel" shortcut offered by PanelWidget on any
@@ -454,7 +490,7 @@ export default function DashboardCanvas({ telemetry, canvas }) {
       ref={canvasRef}
       onDragOver={editMode ? (e) => e.preventDefault() : undefined}
       onDrop={editMode ? handleDrop : undefined}
-      onMouseDown={() => setOpenPicker(null)}
+      onPointerDown={() => setOpenPicker(null)}
       className={[
         'relative min-h-0 flex-1 rounded-2xl bg-navy-50',
         editMode ? 'overflow-auto' : 'overflow-hidden',
@@ -566,7 +602,7 @@ export default function DashboardCanvas({ telemetry, canvas }) {
               return (
                 <div key={key} style={{ position: 'absolute', left: p.x, top: p.y }}>
                   <button
-                    onMouseDown={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => {
                       e.stopPropagation()
                       setOpenPicker(isOpenHere ? null : { widgetId: p.widgetId, portIndex: p.portIndex, port: p })
@@ -583,7 +619,7 @@ export default function DashboardCanvas({ telemetry, canvas }) {
 
                   {isOpenHere && (
                     <div
-                      onMouseDown={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
                       className="absolute left-1/2 top-4 z-10 flex -translate-x-1/2 gap-1 rounded-xl border border-ink-100 bg-white p-1.5 shadow-pop"
                     >
                       {ATTACH_CHOICES.map((choice) => {
@@ -610,11 +646,11 @@ export default function DashboardCanvas({ telemetry, canvas }) {
             accidentally grabbing/dragging a piece underneath it */}
         {editMode && drawMode && (
           <div
-            className="absolute inset-0 z-30 cursor-crosshair"
-            onMouseDown={handleDrawMouseDown}
-            onMouseMove={handleDrawMouseMove}
-            onMouseUp={finishStroke}
-            onMouseLeave={finishStroke}
+            className="absolute inset-0 z-30 touch-none select-none cursor-crosshair"
+            onPointerDown={handleDrawPointerDown}
+            onPointerMove={handleDrawPointerMove}
+            onPointerUp={finishStroke}
+            onPointerCancel={cancelActiveStroke}
           >
             <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
               {/* reference line for the "auto-level" snap — appears the

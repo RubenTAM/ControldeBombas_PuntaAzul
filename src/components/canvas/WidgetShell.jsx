@@ -45,7 +45,7 @@ export default function WidgetShell({
     return (
       <div
         style={positionStyle}
-        onMouseDown={editMode ? onFront : undefined}
+        onPointerDown={editMode ? onFront : undefined}
         className={editMode ? 'rounded outline-dashed outline-1 outline-navy-300' : ''}
       >
         <div className="h-full w-full">{children}</div>
@@ -56,7 +56,7 @@ export default function WidgetShell({
   return (
     <div
       style={positionStyle}
-      onMouseDown={editMode ? onFront : undefined}
+      onPointerDown={editMode ? onFront : undefined}
       className={[
         'flex flex-col items-center gap-2 rounded-2xl border p-3 shadow-card transition-shadow',
         'bg-white',
@@ -144,9 +144,9 @@ export function WidgetReachHandle({
       }}
     >
       <button
-        onMouseDown={startMove}
+        onPointerDown={startMove}
         title={title ? `Mover ${title}` : 'Mover'}
-        className="pointer-events-auto absolute -left-2.5 -top-2.5 flex h-6 w-6 cursor-grab items-center justify-center rounded-full bg-white text-navy-500 shadow-sm ring-1 ring-navy-300 active:cursor-grabbing"
+        className="pointer-events-auto absolute -left-2.5 -top-2.5 flex h-7 w-7 touch-none select-none items-center justify-center rounded-full bg-white text-navy-500 shadow-sm ring-1 ring-navy-300 active:cursor-grabbing"
       >
         <IconGrip className="h-3.5 w-3.5" />
       </button>
@@ -155,10 +155,10 @@ export function WidgetReachHandle({
           onBack), so both can safely claim the same top-center spot */}
       {onBack && (
         <button
-          onMouseDown={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
           onClick={onBack}
           title="Enviar atrás"
-          className="pointer-events-auto absolute -top-2.5 left-1/2 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full bg-white text-navy-400 shadow-sm ring-1 ring-navy-200 hover:text-navy-600"
+          className="pointer-events-auto absolute -top-2.5 left-1/2 flex h-7 w-7 touch-manipulation items-center justify-center -translate-x-1/2 rounded-full bg-white text-navy-400 shadow-sm ring-1 ring-navy-200 hover:text-navy-600"
         >
           <IconSendBack className="h-3.5 w-3.5" />
         </button>
@@ -166,24 +166,24 @@ export function WidgetReachHandle({
       <button
         onClick={onRemove}
         title={title ? `Quitar ${title}` : 'Quitar'}
-        className="pointer-events-auto absolute -right-2.5 -top-2.5 flex h-6 w-6 items-center justify-center rounded-full bg-white text-ink-300 shadow-sm ring-1 ring-ink-200 hover:text-status-critical"
+        className="pointer-events-auto absolute -right-2.5 -top-2.5 flex h-7 w-7 touch-manipulation items-center justify-center rounded-full bg-white text-ink-300 shadow-sm ring-1 ring-ink-200 hover:text-status-critical"
       >
         <IconX className="h-3.5 w-3.5" />
       </button>
       {rotatable && (
         <button
-          onMouseDown={(e) => startRotate(e, rootRef)}
+          onPointerDown={(e) => startRotate(e, rootRef)}
           title="Girar"
-          className="pointer-events-auto absolute -top-7 left-1/2 flex h-6 w-6 -translate-x-1/2 cursor-grab items-center justify-center rounded-full bg-white text-navy-500 shadow-sm ring-1 ring-navy-200 active:cursor-grabbing"
+          className="pointer-events-auto absolute -top-8 left-1/2 flex h-7 w-7 touch-none select-none -translate-x-1/2 cursor-grab items-center justify-center rounded-full bg-white text-navy-500 shadow-sm ring-1 ring-navy-200 active:cursor-grabbing"
         >
           <IconRotate className="h-3.5 w-3.5" />
         </button>
       )}
       {resizeAxis !== 'none' && (
         <div
-          onMouseDown={(e) => startResize(e, resizeAxis)}
+          onPointerDown={(e) => startResize(e, resizeAxis)}
           title="Redimensionar"
-          className="pointer-events-auto absolute -bottom-1.5 -right-1.5 h-4 w-4 cursor-se-resize rounded-sm border-b-2 border-r-2 border-navy-400 bg-white"
+          className="pointer-events-auto absolute -bottom-2.5 -right-2.5 h-7 w-7 touch-none select-none cursor-se-resize rounded-md border-b-2 border-r-2 border-navy-400 bg-white/90"
         />
       )}
     </div>

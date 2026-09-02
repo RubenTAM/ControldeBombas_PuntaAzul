@@ -1,8 +1,8 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 
-// Free-form move/resize/rotate for canvas widgets, plain mouse events (no
-// external drag library). Snaps to a grid / to 90° by default; hold Alt for
-// pixel/degree-exact fine adjustment.
+// Free-form move/resize/rotate using Pointer Events. One path now handles
+// mouse, touch and Apple Pencil instead of relying on mouse-only events.
+// Snaps to a grid / to 90° by default; hold Alt for fine mouse adjustment.
 const GRID = 20
 const ANGLE_SNAP = 90
 
@@ -11,20 +11,32 @@ const snap = (v, step) => Math.round(v / step) * step
 export function useTransformable({ x, y, w, h, rotation = 0, minW = 60, minH = 40, onChange, onFront }) {
   const cleanup = useRef(null)
 
-  const listen = useCallback((onMove, onUp) => {
+  const listen = useCallback((pointerId, onMove, onUp) => {
     cleanup.current?.()
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
+    const move = (event) => {
+      if (event.pointerId === pointerId) onMove(event)
+    }
+    const finish = (event) => {
+      if (event.pointerId !== pointerId) return
+      onUp(event)
+    }
+    window.addEventListener('pointermove', move, { passive: false })
+    window.addEventListener('pointerup', finish)
+    window.addEventListener('pointercancel', finish)
     cleanup.current = () => {
-      window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', onUp)
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', finish)
+      window.removeEventListener('pointercancel', finish)
     }
   }, [])
+
+  useEffect(() => () => cleanup.current?.(), [])
 
   const startMove = useCallback(
     (e) => {
       e.preventDefault()
       e.stopPropagation()
+      e.currentTarget.setPointerCapture?.(e.pointerId)
       onFront?.()
       const origX = x
       const origY = y
@@ -32,6 +44,7 @@ export function useTransformable({ x, y, w, h, rotation = 0, minW = 60, minH = 4
       const startY = e.clientY
 
       const onMove = (ev) => {
+        ev.preventDefault()
         let nx = origX + (ev.clientX - startX)
         let ny = origY + (ev.clientY - startY)
         if (!ev.altKey) {
@@ -41,7 +54,7 @@ export function useTransformable({ x, y, w, h, rotation = 0, minW = 60, minH = 4
         onChange({ x: Math.max(0, nx), y: Math.max(0, ny) })
       }
       const onUp = () => cleanup.current?.()
-      listen(onMove, onUp)
+      listen(e.pointerId, onMove, onUp)
     },
     [x, y, onChange, onFront, listen],
   )
@@ -50,6 +63,7 @@ export function useTransformable({ x, y, w, h, rotation = 0, minW = 60, minH = 4
     (e, axis = 'both') => {
       e.preventDefault()
       e.stopPropagation()
+      e.currentTarget.setPointerCapture?.(e.pointerId)
       onFront?.()
       const origW = w
       const origH = h
@@ -66,6 +80,7 @@ export function useTransformable({ x, y, w, h, rotation = 0, minW = 60, minH = 4
       const sin = Math.sin(rad)
 
       const onMove = (ev) => {
+        ev.preventDefault()
         const dxScreen = ev.clientX - startX
         const dyScreen = ev.clientY - startY
         const dxLocal = dxScreen * cos - dyScreen * sin
@@ -80,7 +95,7 @@ export function useTransformable({ x, y, w, h, rotation = 0, minW = 60, minH = 4
         onChange({ w: Math.max(minW, nw), h: Math.max(minH, nh) })
       }
       const onUp = () => cleanup.current?.()
-      listen(onMove, onUp)
+      listen(e.pointerId, onMove, onUp)
     },
     [w, h, rotation, minW, minH, onChange, onFront, listen],
   )
@@ -89,9 +104,11 @@ export function useTransformable({ x, y, w, h, rotation = 0, minW = 60, minH = 4
     (e, elRef) => {
       e.preventDefault()
       e.stopPropagation()
+      e.currentTarget.setPointerCapture?.(e.pointerId)
       onFront?.()
 
       const onMove = (ev) => {
+        ev.preventDefault()
         const rect = elRef.current.getBoundingClientRect()
         const cx = rect.left + rect.width / 2
         const cy = rect.top + rect.height / 2
@@ -101,7 +118,7 @@ export function useTransformable({ x, y, w, h, rotation = 0, minW = 60, minH = 4
         onChange({ rotation: angle })
       }
       const onUp = () => cleanup.current?.()
-      listen(onMove, onUp)
+      listen(e.pointerId, onMove, onUp)
     },
     [onChange, onFront, listen],
   )
