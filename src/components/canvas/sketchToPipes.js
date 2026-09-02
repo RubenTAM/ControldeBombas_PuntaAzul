@@ -267,18 +267,37 @@ export function buildPieces(corners, registry, startAnchor = null, endAnchor = n
   let sourcePort = startAnchor?.port ?? { x: corners[0].x, y: corners[0].y, dir: segDirs[0] }
 
   for (let i = 0; i < segDirs.length; i++) {
-    const rawLength = Math.round(dist(corners[i], corners[i + 1]))
+    const isInteriorCorner = i < segDirs.length - 1
+    const elbowSize = {
+      w: Math.round(elbowDef.defaultSize.w * scale),
+      h: Math.round(elbowDef.defaultSize.h * scale),
+    }
+
+    // A drawn corner marks the intersection of the two pipe centerlines,
+    // not the elbow's entry port. The elbow already occupies half of its
+    // box before that intersection and half after it. Previously we used
+    // the complete corner-to-corner distance for the straight and THEN
+    // appended the 72px elbow, making every accepted run much larger than
+    // the blue stroke preview. Stop the straight at the elbow's tangent
+    // point so the rendered geometry follows the stroke exactly.
+    const endCorner = corners[i + 1]
+    const elbowInset = isInteriorCorner ? elbowSize.w / 2 : 0
+    const straightEnd = { ...endCorner }
+    if (segDirs[i] === 0) straightEnd.x -= elbowInset
+    if (segDirs[i] === 180) straightEnd.x += elbowInset
+    if (segDirs[i] === 90) straightEnd.y -= elbowInset
+    if (segDirs[i] === 270) straightEnd.y += elbowInset
+
+    const rawLength = Math.round(lengthAlongDir(segDirs[i], sourcePort, straightEnd))
     const w = Math.max(Math.round(straightDef.minW * scale), rawLength)
     const h = Math.round(straightDef.defaultSize.h * scale)
     const straightTransform = placeAttached(sourcePort, { w, h }, straightDef.ports[0])
     pieces.push({ type: 'pipe-straight', ...straightTransform })
     sourcePort = getPortWorld(straightTransform, straightDef.ports[1])
 
-    const isInteriorCorner = i < segDirs.length - 1
     if (!isInteriorCorner) continue
 
     const desiredExitDir = segDirs[i + 1]
-    const elbowSize = { w: Math.round(elbowDef.defaultSize.w * scale), h: Math.round(elbowDef.defaultSize.h * scale) }
     // The elbow's two ports are only 90° apart (not opposite, like a
     // straight pipe's), so which one has to be the "entry" depends on
     // which way the path actually turns — try ports[0] as entry first,
