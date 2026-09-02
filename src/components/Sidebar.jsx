@@ -1,6 +1,9 @@
-import { IconGrid, IconSettings, IconUsers } from '../icons.jsx'
+import { IconBroker, IconGrid, IconSettings, IconUsers } from '../icons.jsx'
 
-const NAV = [{ key: 'dashboard', label: 'Dashboard', icon: IconGrid }]
+const NAV = [
+  { key: 'dashboard', label: 'Dashboard', icon: IconGrid },
+  { key: 'broker', label: 'Broker', icon: IconBroker },
+]
 
 const FOOT = [
   { key: 'config', label: 'Configuración', icon: IconSettings },

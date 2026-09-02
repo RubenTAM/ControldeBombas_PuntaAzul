@@ -24,6 +24,37 @@ export const IconGrid = ({ className }) => (
   </Svg>
 )
 
+export const IconBroker = ({ className }) => (
+  <Svg className={className}>
+    <rect x="4" y="4" width="16" height="5" rx="1.5" />
+    <rect x="4" y="15" width="16" height="5" rx="1.5" />
+    <path d="M8 9v6M16 9v6" />
+    <circle cx="16.5" cy="6.5" r="0.7" fill="currentColor" stroke="none" />
+    <circle cx="16.5" cy="17.5" r="0.7" fill="currentColor" stroke="none" />
+  </Svg>
+)
+
+export const IconLock = ({ className }) => (
+  <Svg className={className}>
+    <rect x="5" y="10" width="14" height="10" rx="2" />
+    <path d="M8 10V7.5a4 4 0 0 1 8 0V10M12 14v2.5" />
+  </Svg>
+)
+
+export const IconRefresh = ({ className }) => (
+  <Svg className={className}>
+    <path d="M19.5 8A8 8 0 0 0 5.8 5.8L4 8" />
+    <path d="M4 4v4h4M4.5 16A8 8 0 0 0 18.2 18.2L20 16" />
+    <path d="M20 20v-4h-4" />
+  </Svg>
+)
+
+export const IconTrash = ({ className }) => (
+  <Svg className={className}>
+    <path d="M4.5 7h15M9 7V4.5h6V7M7 7l.8 13h8.4L17 7M10 10.5v6M14 10.5v6" />
+  </Svg>
+)
+
 export const IconPump = ({ className }) => (
   <Svg className={className}>
     <circle cx="12" cy="12" r="7.5" />
