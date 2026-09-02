@@ -142,11 +142,11 @@ export const WIDGET_REGISTRY = {
     Component: PipeStraightWidget,
     defaultConfig: {},
     defaultSize: { w: 140, h: 24 },
-    // One grid cell is enough for a connected transition. The previous
-    // 40px floor forced short vertical runs to overshoot their elbow/tank
-    // even when the resize handle had already reached its minimum.
-    minW: 20,
+    // Straight runs need finer control than the canvas grid: short links
+    // between an elbow and a tank can now shrink below one 20px cell.
+    minW: 8,
     minH: 24,
+    resizeStep: 2,
     resizeAxis: 'width',
     rotatable: true,
     bare: true,

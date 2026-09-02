@@ -8,7 +8,43 @@ const ANGLE_SNAP = 90
 
 const snap = (v, step) => Math.round(v / step) * step
 
-export function useTransformable({ x, y, w, h, rotation = 0, minW = 60, minH = 40, onChange, onFront }) {
+export function resizeDimensions({
+  origW,
+  origH,
+  dxLocal,
+  dyLocal,
+  axis = 'both',
+  minW,
+  minH,
+  resizeStep = GRID,
+  precise = false,
+}) {
+  let nextW = axis === 'height' ? origW : origW + dxLocal
+  let nextH = axis === 'width' ? origH : origH + dyLocal
+
+  if (!precise) {
+    nextW = snap(nextW, resizeStep)
+    nextH = snap(nextH, resizeStep)
+  }
+
+  return {
+    w: Math.max(minW, nextW),
+    h: Math.max(minH, nextH),
+  }
+}
+
+export function useTransformable({
+  x,
+  y,
+  w,
+  h,
+  rotation = 0,
+  minW = 60,
+  minH = 40,
+  resizeStep = GRID,
+  onChange,
+  onFront,
+}) {
   const cleanup = useRef(null)
 
   const listen = useCallback((pointerId, onMove, onUp) => {
@@ -86,18 +122,24 @@ export function useTransformable({ x, y, w, h, rotation = 0, minW = 60, minH = 4
         const dxLocal = dxScreen * cos - dyScreen * sin
         const dyLocal = dxScreen * sin + dyScreen * cos
 
-        let nw = axis === 'height' ? origW : origW + dxLocal
-        let nh = axis === 'width' ? origH : origH + dyLocal
-        if (!ev.altKey) {
-          nw = snap(nw, GRID)
-          nh = snap(nh, GRID)
-        }
-        onChange({ w: Math.max(minW, nw), h: Math.max(minH, nh) })
+        onChange(
+          resizeDimensions({
+            origW,
+            origH,
+            dxLocal,
+            dyLocal,
+            axis,
+            minW,
+            minH,
+            resizeStep,
+            precise: ev.altKey,
+          }),
+        )
       }
       const onUp = () => cleanup.current?.()
       listen(e.pointerId, onMove, onUp)
     },
-    [w, h, rotation, minW, minH, onChange, onFront, listen],
+    [w, h, rotation, minW, minH, resizeStep, onChange, onFront, listen],
   )
 
   const startRotate = useCallback(

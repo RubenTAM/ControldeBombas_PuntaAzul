@@ -108,6 +108,7 @@ export function WidgetReachHandle({
   rotation = 0,
   minW,
   minH,
+  resizeStep,
   resizeAxis = 'both',
   rotatable = false,
   title,
@@ -125,6 +126,7 @@ export function WidgetReachHandle({
     rotation,
     minW,
     minH,
+    resizeStep,
     onChange: onTransform,
     onFront,
   })

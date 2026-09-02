@@ -644,6 +644,7 @@ export default function DashboardCanvas({ telemetry, canvas }) {
                 rotation={w.rotation}
                 minW={def.minW}
                 minH={def.minH}
+                resizeStep={def.resizeStep}
                 resizeAxis={def.resizeAxis}
                 rotatable={def.rotatable}
                 onTransform={(patch) => updateTransform(w.id, constrainToLayout(w, snapLayoutTransform(w, patch)))}
