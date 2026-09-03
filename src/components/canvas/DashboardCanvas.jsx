@@ -4,6 +4,7 @@ import TagConfigModal from './TagConfigModal.jsx'
 import { WIDGET_REGISTRY } from './registry.js'
 import { getPortWorld, placeAttached, CONNECT_THRESHOLD } from './ports.js'
 import { sketchToPieces, simplify, orthogonalize, findAlignmentGuide } from './sketchToPipes.js'
+import { computeShadeFlips } from './shadeSync.js'
 import { IconLayoutBoard, IconPipeStraight, IconPipeElbow, IconPipeTee, IconPipeTeeUp, IconPump } from '../../icons.jsx'
 
 const GRID = 20
@@ -276,6 +277,14 @@ export default function DashboardCanvas({ telemetry, canvas, broker }) {
     })
     return map
   }, [ports])
+
+  // Per-widget shading correction for elbow/Te pieces (see shadeSync.js):
+  // whichever of their gradients needs an extra 180° so its highlight
+  // lands on the same side as whatever is actually plugged into that
+  // port, computed fresh from the CURRENT connection graph every time the
+  // layout changes — so it stays right as pieces are added, removed, or
+  // dragged around, not just at the moment something was first attached.
+  const shadeFlipByWidget = useMemo(() => computeShadeFlips(widgets), [widgets])
 
   // The layout may grow downward and scroll, but never sideways. Track
   // only the deepest bottom edge; horizontal placement is constrained by
@@ -711,6 +720,7 @@ export default function DashboardCanvas({ telemetry, canvas, broker }) {
                 width={w.w}
                 height={w.h}
                 rotation={w.rotation || 0}
+                shadeFlip={shadeFlipByWidget[w.id]}
                 portsOpen={portsOpenByWidget[w.id]}
                 connectedTypes={portsConnectedTypeByWidget[w.id]}
                 onQuickFill={w.type === 'panel' && !panelHasChildren(w) ? () => handleQuickFillPanel(w) : undefined}

@@ -38,14 +38,24 @@
 import { useId } from 'react'
 import { WATER_COLOR, MetalStops } from './PipeStraightWidget'
 
-export default function PipeElbowWidget({ telemetry, rotation = 0 }) {
+export default function PipeElbowWidget({ telemetry, rotation = 0, shadeFlip }) {
   const flowing = Boolean(telemetry?.flowAnimating)
-  // rotation is left untouched here — see PipeStraightWidget's note. The
+  // rotation itself is left untouched — see PipeStraightWidget's note: the
   // gradients below rotate rigidly with the whole widget box (a plain CSS
   // transform applied by WidgetShell), same as physically turning the
-  // piece over would: whichever side was lit moves with it. That's on
-  // purpose, so the rotate handle is the user's own tool for lining up a
-  // piece's shading against its neighbor by eye.
+  // piece over would. But unlike a straight run, an elbow's rotation is
+  // never a free choice a person makes by hand — it's forced entirely by
+  // which two directions it needs to connect (the "+" menu / "Dibujar
+  // tubería" pick the one rotation that fits, and turning it further
+  // would swing a port away from whatever it's plugged into) — so there's
+  // no manual "rotate to fix the shading" available here the way there is
+  // for a straight piece. `shadeFlip` is DashboardCanvas's computed
+  // answer instead (see shadeSync.js): an extra 180° per stub, chosen so
+  // each one's highlight lands on the same side as whatever tube is
+  // actually connected there, recomputed automatically as the layout
+  // changes rather than something to fix by hand.
+  const vFlip = shadeFlip?.v ? 'rotate(180 36 36)' : undefined
+  const hFlip = shadeFlip?.h ? 'rotate(180 36 36)' : undefined
   const uid = useId()
   const vId = `elbowV-${uid}`
   const hId = `elbowH-${uid}`
@@ -60,11 +70,11 @@ export default function PipeElbowWidget({ telemetry, rotation = 0 }) {
         {/* vertical stub + top flange (x24..48, the flange's own span) —
             reversed direction so it matches the ring's band sequence at
             their shared seam (y=12) */}
-        <linearGradient id={vId} gradientUnits="userSpaceOnUse" x1="44" y1="0" x2="28" y2="0">
+        <linearGradient id={vId} gradientUnits="userSpaceOnUse" x1="44" y1="0" x2="28" y2="0" gradientTransform={vFlip}>
           <MetalStops />
         </linearGradient>
         {/* horizontal stub + right flange (y24..48, the flange's own span) */}
-        <linearGradient id={hId} gradientUnits="userSpaceOnUse" x1="0" y1="28" x2="0" y2="44">
+        <linearGradient id={hId} gradientUnits="userSpaceOnUse" x1="0" y1="28" x2="0" y2="44" gradientTransform={hFlip}>
           <MetalStops />
         </linearGradient>
         {/* same stop sequence, remapped onto r=16..32 (offset 50%..100%)
