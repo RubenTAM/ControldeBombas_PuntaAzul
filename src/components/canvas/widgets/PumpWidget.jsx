@@ -20,9 +20,12 @@ const DEFAULT_HEIGHT = 212
 // own coordinate space and the runs stretch from there to the widget ports.
 const CARD_WIDTH = 142
 const CARD_HEIGHT = 182
-const SIDE_ROOT_X = 104
+// Internal artwork roots only. Changing these does NOT move either public
+// canvas port: the connection SVG simply grows/shrinks inside the same fixed
+// widget until it reaches the original port coordinate.
+const SIDE_ROOT_X = 125
 const SIDE_ROOT_Y = 144
-const BOTTOM_ROOT_Y = 167
+const BOTTOM_ROOT_Y = 177
 
 // The discharge leaves the pump volute, not the middle of the information
 // card. At the default 212px widget height this lands 38px below the old

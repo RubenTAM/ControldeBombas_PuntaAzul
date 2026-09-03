@@ -1,62 +1,32 @@
-import { useId } from 'react'
 import { IconAlertTriangle } from '../icons.jsx'
+import pumpHorizontalBlue from '../assets/pump-horizontal-blue.png'
 
 function PumpEquipment({ running, fault }) {
-  const uid = useId().replace(/:/g, '')
-  const metalId = `pump-metal-${uid}`
-  const darkMetalId = `pump-dark-${uid}`
-  const bodyId = `pump-body-${uid}`
-  const glowId = `pump-glow-${uid}`
-
   return (
-    <svg
-      viewBox="0 0 142 124"
-      className="h-[124px] w-[142px] overflow-visible"
+    <div
+      className="relative h-[124px] w-[142px]"
       role="img"
-      aria-label="Bomba centrífuga vertical"
+      aria-label="Bomba centrífuga horizontal"
     >
-      <defs>
-        <linearGradient id={metalId} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="#7f8da0" />
-          <stop offset="0.14" stopColor="#e8edf3" />
-          <stop offset="0.38" stopColor="#aab5c3" />
-          <stop offset="0.68" stopColor="#f7f9fc" />
-          <stop offset="1" stopColor="#77869a" />
-        </linearGradient>
-        <linearGradient id={darkMetalId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#47566b" />
-          <stop offset="1" stopColor="#1f2c40" />
-        </linearGradient>
-        <linearGradient id={bodyId} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor={fault ? '#f87171' : '#1e5fae'} />
-          <stop offset="0.55" stopColor={fault ? '#dc2626' : '#123f7b'} />
-          <stop offset="1" stopColor="#0b2447" />
-        </linearGradient>
-        <filter id={glowId} x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="3" result="blur" />
-          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
-      </defs>
-
-      {/* Motor vertical: conserva la silueta de la referencia, pero con
-          volumen, ventilación y una lectura más industrial. */}
-      <ellipse cx="71" cy="10" rx="25" ry="7" fill="#dbe3ed" stroke="#607086" strokeWidth="1.5" />
-      <path d="M46 10v38c0 8 6 14 14 14h22c8 0 14-6 14-14V10" fill={`url(#${metalId})`} stroke="#607086" strokeWidth="1.5" />
-      <path d="M51 14v34M59 12v43M67 12v43M75 12v43M83 12v43M91 14v34" stroke="#77869a" strokeWidth="3" strokeLinecap="round" opacity=".7" />
-      <path d="M54 15v31M62 14v38M70 14v38M78 14v38M87 14v34" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" opacity=".72" />
-      <rect x="61" y="60" width="20" height="12" rx="2" fill={`url(#${darkMetalId})`} stroke="#26364b" />
-      <rect x="55" y="68" width="32" height="7" rx="2" fill={`url(#${metalId})`} stroke="#607086" />
-
-      {/* Cuerpo hidráulico y voluta. */}
-      <path d="M35 80c0-6 5-11 11-11h48c7 0 12 5 12 12v21c0 9-7 15-16 15H51c-9 0-16-7-16-16V80Z" fill={`url(#${bodyId})`} stroke="#0b2e5b" strokeWidth="2" />
-      <path d="M42 108h57" stroke="#fff" strokeWidth="2" strokeLinecap="round" opacity=".35" />
-      <path d="M46 79h48" stroke="#6bb8ef" strokeWidth="1.5" strokeLinecap="round" opacity=".65" />
-
-      {/* Indicador discreto de equipo energizado. */}
-      <circle cx="89" cy="23" r="3.5" fill={fault ? '#ef4444' : running ? '#22c55e' : '#94a3b8'} filter={running || fault ? `url(#${glowId})` : undefined} />
-      <path d="M32 117h29v6H32zM81 117h29v6H81z" fill={`url(#${darkMetalId})`} />
-      <path d="M43 121h18v3H43zM81 121h18v3H81z" fill="#718096" />
-    </svg>
+      <img
+        src={pumpHorizontalBlue}
+        alt=""
+        draggable="false"
+        className="absolute inset-x-0 bottom-0 h-[100px] w-[142px] origin-bottom scale-y-[0.70] select-none object-contain object-bottom"
+        style={{
+          filter: fault
+            ? 'drop-shadow(0 0 4px rgba(239,68,68,.65))'
+            : running
+              ? 'drop-shadow(0 0 4px rgba(34,197,94,.38))'
+              : 'drop-shadow(0 2px 2px rgba(15,35,65,.2))',
+        }}
+      />
+      <span
+        aria-hidden="true"
+        className="absolute right-2 top-5 h-2 w-2 rounded-full ring-2 ring-white/80"
+        style={{ backgroundColor: fault ? '#ef4444' : running ? '#22c55e' : '#94a3b8' }}
+      />
+    </div>
   )
 }
 
