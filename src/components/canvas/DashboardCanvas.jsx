@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import WidgetShell, { WidgetReachHandle } from './WidgetShell.jsx'
 import TagConfigModal from './TagConfigModal.jsx'
 import { WIDGET_REGISTRY } from './registry.js'
@@ -143,6 +143,11 @@ export default function DashboardCanvas({ telemetry, canvas, broker }) {
   } = canvas
   const canvasRef = useRef(null)
   const [layoutWidth, setLayoutWidth] = useState(MIN_CANVAS_WIDTH)
+  // View mode's "fit the whole dashboard on screen, no scrollbar, same
+  // proportions everywhere" scale — see the ResizeObserver effect below,
+  // right after contentWidth/contentHeight are computed, for how this is
+  // derived. 1 until the first measurement lands.
+  const [viewScale, setViewScale] = useState(1)
   const [openPicker, setOpenPicker] = useState(null) // { widgetId, portIndex, port }
   const [configuringId, setConfiguringId] = useState(null)
   const isDrawingRef = useRef(null)
@@ -295,6 +300,44 @@ export default function DashboardCanvas({ telemetry, canvas, broker }) {
   }, [widgets])
 
   const surfaceWidth = Math.max(MIN_CANVAS_WIDTH, layoutWidth, contentWidth)
+
+  // View mode's "authored" size — deliberately NOT layoutWidth (that one
+  // tracks the live viewport and only ever grows, which is exactly what
+  // made the read-only dashboard render bigger/scrollier on a MacBook
+  // than on an iPad: whichever screen happened to view it last stretched
+  // the shared surface). This is the same fixed reference size on every
+  // device — just the widgets' own footprint against the 1600px baseline
+  // — so the ONLY thing that changes device to device is viewScale below.
+  const naturalWidth = Math.max(MIN_CANVAS_WIDTH, contentWidth)
+  const naturalHeight = contentHeight + CANVAS_PAD * 2
+
+  // Scales the whole read-only dashboard, uniformly, to whatever fits the
+  // screen with zero scrollbars — "que se vea igual... en todos los
+  // dispositivos, aunque esté más chico". Uses the SAME canvasRef as the
+  // layoutWidth measurement above (same outer box, just read for its
+  // height too here) rather than a second ref. Skipped entirely in edit
+  // mode, which keeps the existing fixed-scale, scrollable authoring
+  // surface — precise placement while editing needs a stable 1:1 canvas,
+  // not one that's constantly being rescaled underfoot.
+  //
+  // useLayoutEffect, not useEffect: this one runs before the browser
+  // paints, so switching into view mode (or resizing) never flashes a
+  // frame at the stale/default scale first.
+  useLayoutEffect(() => {
+    if (editMode) return undefined
+    const el = canvasRef.current
+    if (!el) return undefined
+    const measure = () => {
+      const availW = el.clientWidth
+      const availH = el.clientHeight
+      if (!availW || !availH) return
+      setViewScale(Math.min(availW / naturalWidth, availH / naturalHeight))
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [editMode, naturalWidth, naturalHeight])
 
   // While dragging a widget (a plain x/y move, not a resize or rotate),
   // check every one of ITS OWN ports against every OTHER widget's still-
@@ -618,28 +661,16 @@ export default function DashboardCanvas({ telemetry, canvas, broker }) {
     })
   }
 
-  return (
-    <div
-      ref={canvasRef}
-      onDragOver={editMode ? (e) => e.preventDefault() : undefined}
-      onDrop={editMode ? handleDrop : undefined}
-      onPointerDown={() => setOpenPicker(null)}
-      className="relative min-h-0 flex-1 overflow-auto rounded-2xl bg-navy-50"
-    >
-      {/* The surface grows downward so long dashboards remain scrollable,
-          while its width stays locked to the visible layout. */}
-      <div
-        className="relative"
-        style={{
-          padding: CANVAS_PAD,
-          width: surfaceWidth,
-          minHeight: '100%',
-          height: `max(100%, ${contentHeight + CANVAS_PAD * 2}px)`,
-          backgroundImage: editMode ? 'radial-gradient(circle, #c7ccdb 1px, transparent 1px)' : undefined,
-          backgroundSize: editMode ? `${GRID}px ${GRID}px` : undefined,
-        }}
-      >
-        {widgets.length === 0 && (
+  // Everything actually drawn inside the canvas surface — identical in
+  // both modes (most of it already gates itself on `editMode` inline:
+  // reach handles, port "+" buttons, the draw-tubería capture layer, the
+  // tag-config modal, the pending-sketch preview all only ever render
+  // while editing). Pulled out once so edit mode and view mode can each
+  // wrap it in their own sizing/scaling box below without maintaining two
+  // copies of this JSX.
+  const surfaceInner = (
+    <>
+      {widgets.length === 0 && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm text-ink-300">
             <IconLayoutBoard className="h-6 w-6" />
             {editMode ? 'Arrastra un widget de la paleta hacia aquí para empezar' : 'Lienzo vacío — activa "Editar lienzo" para agregar widgets'}
@@ -844,6 +875,69 @@ export default function DashboardCanvas({ telemetry, canvas, broker }) {
             ))}
           </svg>
         )}
+    </>
+  )
+
+  if (!editMode) {
+    // View mode: no scrollbar, ever — the whole authored dashboard is
+    // scaled uniformly (viewScale, computed above) to whatever fits this
+    // screen, so it always reads as the same layout at the same
+    // proportions on an iPad, a laptop, or the Mac it was built on, just
+    // bigger or smaller. The outer box is sized to the SCALED footprint
+    // (what reserves the right amount of space and centers it); the inner
+    // box stays at the fixed, device-independent naturalWidth/Height and
+    // is what actually carries the CSS transform — scale() doesn't change
+    // an element's own layout box, only its paint, so without this outer/
+    // inner split the unscaled box would still be the one reserving (and
+    // often overflowing) space.
+    return (
+      <div
+        ref={canvasRef}
+        onPointerDown={() => setOpenPicker(null)}
+        className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-2xl bg-navy-50"
+      >
+        <div style={{ width: naturalWidth * viewScale, height: naturalHeight * viewScale }}>
+          <div
+            className="relative"
+            style={{
+              padding: CANVAS_PAD,
+              width: naturalWidth,
+              height: naturalHeight,
+              transform: `scale(${viewScale})`,
+              transformOrigin: 'top left',
+            }}
+          >
+            {surfaceInner}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      ref={canvasRef}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={handleDrop}
+      onPointerDown={() => setOpenPicker(null)}
+      className="relative min-h-0 flex-1 overflow-auto rounded-2xl bg-navy-50"
+    >
+      {/* The surface grows downward so long dashboards remain scrollable,
+          while its width stays locked to the visible layout. Edit-mode
+          only — see the early return above for the read-only, scaled,
+          scroll-free view. */}
+      <div
+        className="relative"
+        style={{
+          padding: CANVAS_PAD,
+          width: surfaceWidth,
+          minHeight: '100%',
+          height: `max(100%, ${contentHeight + CANVAS_PAD * 2}px)`,
+          backgroundImage: 'radial-gradient(circle, #c7ccdb 1px, transparent 1px)',
+          backgroundSize: `${GRID}px ${GRID}px`,
+        }}
+      >
+        {surfaceInner}
       </div>
     </div>
   )

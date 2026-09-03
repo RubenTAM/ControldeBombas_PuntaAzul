@@ -26,7 +26,7 @@ export default function Sidebar({ active, onNavigate, alarmCount, open = false, 
           open ? 'flex translate-x-0' : 'hidden -translate-x-full',
         ].join(' ')}
       >
-        <div className="flex min-h-[92px] items-center gap-3 border-b border-white/[0.06] px-5 py-4">
+        <div className="flex min-h-[92px] items-center gap-3 border-b border-white/[0.16] px-5 py-4">
           <img
             src={puntaAzulLogo}
             alt="Punta Azul Residencial & Fitness"
@@ -49,7 +49,7 @@ export default function Sidebar({ active, onNavigate, alarmCount, open = false, 
           ))}
         </nav>
 
-        <div className="border-t border-white/[0.06] px-3 py-3">
+        <div className="border-t border-white/[0.16] px-3 py-3">
           <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-navy-400">
             Administración
           </p>
@@ -58,7 +58,7 @@ export default function Sidebar({ active, onNavigate, alarmCount, open = false, 
           ))}
         </div>
 
-        <div className="border-t border-white/[0.06] px-6 py-4">
+        <div className="border-t border-white/[0.16] px-6 py-4">
           <p className="text-[11px] text-navy-400">Telemetría PuntaAzul · v0.1</p>
         </div>
       </aside>
