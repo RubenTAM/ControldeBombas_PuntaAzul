@@ -28,14 +28,12 @@ import { WATER_COLOR, MetalStops } from './PipeStraightWidget'
 
 export default function PipeTeeWidget({ telemetry, rotation = 0 }) {
   const flowing = Boolean(telemetry?.flowAnimating)
-  // See PipeElbowWidget/PipeStraightWidget for the full explanation: each
-  // gradient below is authored once, for rotation 0, and needs re-applying
-  // that same 180° at the one point (total rotation ≥180°) where rotating
-  // the piece would otherwise also flip which side of the tube its
-  // gradient samples as "lit" — the pivot is this piece's own center
-  // (36,36), same as the elbow's.
-  const gradFlip = (((rotation % 360) + 360) % 360) >= 180
-  const flipTransform = gradFlip ? 'rotate(180 36 36)' : undefined
+  // rotation is left untouched here — see PipeStraightWidget's note. The
+  // gradients below rotate rigidly with the whole widget box (a plain CSS
+  // transform applied by WidgetShell), same as physically turning the
+  // piece over would: whichever side was lit moves with it. That's on
+  // purpose, so the rotate handle is the user's own tool for lining up a
+  // piece's shading against its neighbor by eye.
   const uid = useId()
   const hId = `teeH-${uid}`
   const vId = `teeV-${uid}`
@@ -47,11 +45,11 @@ export default function PipeTeeWidget({ telemetry, rotation = 0 }) {
     >
       <defs>
         {/* through run + its west/east flanges (y24..48, the flanges' own span) */}
-        <linearGradient id={hId} gradientUnits="userSpaceOnUse" x1="0" y1="28" x2="0" y2="44" gradientTransform={flipTransform}>
+        <linearGradient id={hId} gradientUnits="userSpaceOnUse" x1="0" y1="28" x2="0" y2="44">
           <MetalStops />
         </linearGradient>
         {/* branch + its root collar + south flange (x24..48, their own span) */}
-        <linearGradient id={vId} gradientUnits="userSpaceOnUse" x1="28" y1="0" x2="44" y2="0" gradientTransform={flipTransform}>
+        <linearGradient id={vId} gradientUnits="userSpaceOnUse" x1="28" y1="0" x2="44" y2="0">
           <MetalStops />
         </linearGradient>
       </defs>

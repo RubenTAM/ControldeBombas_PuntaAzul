@@ -38,7 +38,7 @@ export const MetalStops = () => (
   </>
 )
 
-function Flange({ heightPx, widthPx, gradId, gradFlip }) {
+function Flange({ heightPx, widthPx, gradId }) {
   return (
     <svg viewBox="0 0 6 24" width={widthPx} height={heightPx} className="min-w-0 shrink-0 overflow-hidden">
       <defs>
@@ -49,15 +49,7 @@ function Flange({ heightPx, widthPx, gradId, gradFlip }) {
             the dark band to still be visible in the thin strip left
             showing above/below the water, instead of clamped-pad flat
             color spilling in from a 0..24 span that never gets there. */}
-        <linearGradient
-          id={gradId}
-          gradientUnits="userSpaceOnUse"
-          x1="0"
-          y1="4"
-          x2="0"
-          y2="20"
-          gradientTransform={gradFlip ? 'rotate(180 3 12)' : undefined}
-        >
+        <linearGradient id={gradId} gradientUnits="userSpaceOnUse" x1="0" y1="4" x2="0" y2="20">
           <MetalStops />
         </linearGradient>
       </defs>
@@ -71,16 +63,15 @@ function Flange({ heightPx, widthPx, gradId, gradFlip }) {
 export default function PipeStraightWidget({ width = 140, height = 24, portsOpen = [true, true], telemetry, rotation = 0 }) {
   const [openStart, openEnd] = portsOpen
   const flowing = Boolean(telemetry?.flowAnimating)
-  // See the elbow/tee widgets for the full explanation: the metal-shading
-  // gradient below is authored once, for rotation 0. A widget rotated 180°
-  // from another otherwise-identical one would, if left uncorrected, sample
-  // that SAME gradient backwards — 180° rotation negates a vector — so a
-  // horizontal run built from two straight pieces at 0° and 180° would show
-  // one lit "bright on top" and the other "bright on bottom" even though
-  // they're meant to read as one continuous tube. Re-applying the same
-  // rotation to the gradient itself (only ever needed at the 180°-apart
-  // point, not continuously) cancels that flip back out.
-  const gradFlip = (((rotation % 360) + 360) % 360) >= 180
+  // rotation isn't used to touch the gradient here (see registry note): the
+  // whole widget box — this SVG, gradient included — gets physically
+  // rotated by WidgetShell's own CSS transform, the same way flipping a
+  // real metal rod over moves its highlight to the other side. An earlier
+  // version counter-rotated the gradient to cancel that out, so every
+  // rotation of a piece looked identically lit — but that made the rotate
+  // handle look broken on this left-right-symmetric piece (turning it did
+  // nothing visible), when rotating by hand is exactly how you fix a
+  // shading mismatch against a neighboring piece.
   const uid = useId()
   const gradId = `pipeMetal-${uid}`
   const visibleFlanges = Number(openStart !== false) + Number(openEnd !== false)
@@ -91,7 +82,7 @@ export default function PipeStraightWidget({ width = 140, height = 24, portsOpen
       className="flex h-full w-full items-stretch overflow-hidden"
       style={{ filter: 'drop-shadow(0 1.5px 2px rgba(11,18,32,0.28))' }}
     >
-      {openStart !== false && <Flange heightPx={height} widthPx={flangeWidth} gradId={gradId} gradFlip={gradFlip} />}
+      {openStart !== false && <Flange heightPx={height} widthPx={flangeWidth} gradId={gradId} />}
 
       {/* tube: same 16-unit diameter / 24-tall viewBox as every other pipe
           piece, stretched horizontally only. Same gradient id + "0..24"
@@ -102,15 +93,7 @@ export default function PipeStraightWidget({ width = 140, height = 24, portsOpen
         className="h-full w-0 min-w-0 flex-1 overflow-visible"
       >
         <defs>
-          <linearGradient
-            id={gradId}
-            gradientUnits="userSpaceOnUse"
-            x1="0"
-            y1="4"
-            x2="0"
-            y2="20"
-            gradientTransform={gradFlip ? 'rotate(180 50 12)' : undefined}
-          >
+          <linearGradient id={gradId} gradientUnits="userSpaceOnUse" x1="0" y1="4" x2="0" y2="20">
             <MetalStops />
           </linearGradient>
         </defs>
@@ -135,7 +118,7 @@ export default function PipeStraightWidget({ width = 140, height = 24, portsOpen
         )}
       </svg>
 
-      {openEnd !== false && <Flange heightPx={height} widthPx={flangeWidth} gradId={gradId} gradFlip={gradFlip} />}
+      {openEnd !== false && <Flange heightPx={height} widthPx={flangeWidth} gradId={gradId} />}
     </div>
   )
 }
