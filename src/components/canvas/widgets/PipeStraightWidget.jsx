@@ -60,8 +60,9 @@ function Flange({ heightPx, widthPx, gradId }) {
   )
 }
 
-export default function PipeStraightWidget({ width = 140, height = 24, portsOpen = [true, true] }) {
+export default function PipeStraightWidget({ width = 140, height = 24, portsOpen = [true, true], telemetry }) {
   const [openStart, openEnd] = portsOpen
+  const flowing = Boolean(telemetry?.flowAnimating)
   const uid = useId()
   const gradId = `pipeMetal-${uid}`
   const visibleFlanges = Number(openStart !== false) + Number(openEnd !== false)
@@ -88,9 +89,10 @@ export default function PipeStraightWidget({ width = 140, height = 24, portsOpen
           </linearGradient>
         </defs>
         <rect x="0" y="4" width="100" height="16" fill={`url(#${gradId})`} />
-        {/* animated "water" flowing through the pipe — thick (10 of the
-            tube's 16-unit diameter), always animating for now while we
-            dial in the look */}
+        {/* "water" through the pipe — only animates while flowAnimating is
+            true (simulation toggle on AND a pump actually running); still
+            filled but static otherwise, since this is not a real
+            flow-rate reading */}
         <line
           x1="0"
           y1="12"
@@ -100,7 +102,7 @@ export default function PipeStraightWidget({ width = 140, height = 24, portsOpen
           strokeWidth="10"
           strokeLinecap="round"
           strokeDasharray="20 20"
-          className="animate-dashFlow"
+          className={flowing ? 'animate-dashFlow' : undefined}
         />
       </svg>
 

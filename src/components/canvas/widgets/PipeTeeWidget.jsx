@@ -26,7 +26,8 @@
 import { useId } from 'react'
 import { WATER_COLOR, MetalStops } from './PipeStraightWidget'
 
-export default function PipeTeeWidget() {
+export default function PipeTeeWidget({ telemetry }) {
+  const flowing = Boolean(telemetry?.flowAnimating)
   const uid = useId()
   const hId = `teeH-${uid}`
   const vId = `teeV-${uid}`
@@ -69,7 +70,7 @@ export default function PipeTeeWidget() {
         strokeWidth="10"
         strokeLinecap="round"
         strokeDasharray="20 20"
-        className="animate-dashFlow"
+        className={flowing ? 'animate-dashFlow' : undefined}
       />
 
       {/* west flange (flush with left edge) — always drawn */}

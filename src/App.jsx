@@ -121,7 +121,7 @@ export default function App() {
                 </div>
               </div>
 
-              {isAdmin && canvas.editMode && <WidgetPalette canvas={canvas} />}
+              {isAdmin && canvas.editMode && <WidgetPalette canvas={canvas} telemetry={telemetry} />}
 
               {canvas.syncStatus === 'error' && (
                 <div className="shrink-0 rounded-xl bg-status-warningBg px-4 py-2 text-xs font-semibold text-status-warning">No se pudo sincronizar el lienzo con el servidor.</div>

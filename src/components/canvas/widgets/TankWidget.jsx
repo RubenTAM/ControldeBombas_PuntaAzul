@@ -1,7 +1,7 @@
 import TankVisual from '../../TankVisual.jsx'
 
 export default function TankWidget({ telemetry, connectedTypes, config }) {
-  const { level, thresholds, limits, volume, capacity } = telemetry
+  const { level, thresholds, limits, volume, capacity, flowAnimating } = telemetry
   return (
     <TankVisual
       level={level}
@@ -12,6 +12,7 @@ export default function TankWidget({ telemetry, connectedTypes, config }) {
       connectedTypes={connectedTypes}
       label={config?.label}
       editMode={false}
+      flowing={flowAnimating}
     />
   )
 }

@@ -51,7 +51,7 @@ import { useId } from 'react'
 // (kept as a prop only because TankWidget still passes it through).
 const wavePath = `M0,${WAVE_AMP} Q ${VB_W / 4},${-WAVE_AMP} ${VB_W / 2},${WAVE_AMP} T ${VB_W},${WAVE_AMP} T ${VB_W * 1.5},${WAVE_AMP} T ${VB_W * 2},${WAVE_AMP} L ${VB_W * 2},${WAVE_AMP * 4} L 0,${WAVE_AMP * 4} Z`
 
-export default function TankVisual({ level, volume, capacity, connectedTypes, label, editMode, onLabelChange }) {
+export default function TankVisual({ level, volume, capacity, connectedTypes, label, editMode, onLabelChange, flowing = false }) {
   const liquidY = pctToY(level)
   const uid = useId()
   const clipId = `tank-body-clip-${uid}`
@@ -104,9 +104,11 @@ export default function TankVisual({ level, volume, capacity, connectedTypes, la
             with the first attached piece, no gap or overlap. */}
         <g style={{ filter: 'drop-shadow(0 1.5px 2px rgba(11,18,32,0.3))' }}>
           <rect x={cx - 8} y={BOTTOM_Y - 10} width={16} height={30} fill={`url(#${outletId})`} />
-          {/* animated "water" down the outlet stub, same treatment as the
-              canvas pipe pieces — stops before the flange so the flange
-              still caps it visually */}
+          {/* "water" down the outlet stub, same treatment as the canvas
+              pipe pieces — stops before the flange so the flange still
+              caps it visually. Only animates while `flowing` is true (see
+              useTelemetry's flowAnimating: simulation toggle on AND a
+              pump actually running) — otherwise it's a static fill. */}
           <line
             x1={cx}
             y1={BOTTOM_Y - 10}
@@ -116,7 +118,7 @@ export default function TankVisual({ level, volume, capacity, connectedTypes, la
             strokeWidth={10}
             strokeLinecap="round"
             strokeDasharray="20 20"
-            className="animate-dashFlow"
+            className={flowing ? 'animate-dashFlow' : undefined}
           />
           {/* always drawn now — see the comment above connectedTypes */}
           <rect x={cx - 12} y={BOTTOM_Y + 20} width={24} height={6} rx={1} fill={`url(#${outletId})`} />

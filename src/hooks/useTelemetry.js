@@ -48,8 +48,12 @@ const ALARM_LIBRARY = [
   { severity: 'serious', tag: 'FALLA', message: 'Sobrecorriente transitoria detectada' },
 ]
 
+// Both pumps start DETENIDA. There is no real tag wired up yet (no LOGO!/
+// MQTT feed), so nothing here should look "alive" until either a real tag
+// is configured on a pump widget or the operator explicitly turns on
+// flowSimEnabled below to preview the demo animation.
 const initialPumps = {
-  p1: { id: 'p1', label: 'Bomba 1', running: true, fault: false, hours: 128.6, mode: 'AUTO' },
+  p1: { id: 'p1', label: 'Bomba 1', running: false, fault: false, hours: 128.6, mode: 'AUTO' },
   p2: { id: 'p2', label: 'Bomba 2', running: false, fault: false, hours: 96.3, mode: 'AUTO' },
 }
 
@@ -69,6 +73,15 @@ export function useTelemetry() {
   ])
   const [connected, setConnected] = useState(true)
   const [now, setNow] = useState(Date.now())
+
+  // Master switch for the demo/simulated flow effects (animated blue water
+  // in the canvas pipes + the AUTO start/stop loop below). OFF by default:
+  // with no real tag connected yet, nothing should start/stop or "flow" on
+  // its own — an operator staring at the dashboard shouldn't see equipment
+  // state flicker for no reason. Turning this ON is an explicit, temporary
+  // "show me what it would look like" preview, not real telemetry.
+  const [flowSimEnabled, setFlowSimEnabled] = useState(false)
+  const toggleFlowSim = useCallback(() => setFlowSimEnabled((v) => !v), [])
 
   const historyRef = useRef(buildSeries(144, 24 * 3_600_000, Date.now()))
   const [history, setHistory] = useState(historyRef.current)
@@ -169,7 +182,14 @@ export function useTelemetry() {
   // Any pump in AUTO starts when the level drops to the arranque setpoint
   // and stops when it reaches the paro setpoint; a pump in MANUAL is left
   // alone here and only responds to the operator's button.
+  //
+  // Gated behind flowSimEnabled: this loop is driven by the fake tank
+  // level above, not a real sensor, so without an explicit "yes, preview
+  // the simulation" it must never move a pump between EN MARCHA/DETENIDA
+  // on its own — that flicker with no real tag behind it is exactly what
+  // reads as broken/stressful to an operator watching the screen.
   useEffect(() => {
+    if (!flowSimEnabled) return
     if (level <= thresholds.start) {
       setPumps((prev) => {
         let changed = false
@@ -195,7 +215,7 @@ export function useTelemetry() {
         return changed ? next : prev
       })
     }
-  }, [level, thresholds.start, thresholds.stop, pumps.p1.mode, pumps.p2.mode])
+  }, [flowSimEnabled, level, thresholds.start, thresholds.stop, pumps.p1.mode, pumps.p2.mode])
 
   // accrue operating hours for whichever pump(s) are running
   useEffect(() => {
@@ -210,6 +230,15 @@ export function useTelemetry() {
 
   const volume = useMemo(() => Math.round((level / 100) * TANK_CAPACITY_M3 * 10) / 10, [level])
   const activeAlarms = useMemo(() => alarms.filter((a) => !a.acknowledged), [alarms])
+
+  // Whether the canvas pipes/tank outlet should show the animated flow —
+  // both conditions have to hold: the operator explicitly turned the
+  // simulation preview on AND at least one pump is actually running (real
+  // tag or, while flowSimEnabled, the demo loop above). This is what makes
+  // "solo habrá flujo cuando las bombas estén realmente prendidas" true
+  // instead of the old always-on animation that ran regardless of state.
+  const pumpsRunning = useMemo(() => Object.values(pumps).some((p) => p.running), [pumps])
+  const flowAnimating = flowSimEnabled && pumpsRunning
 
   return {
     level,
@@ -228,5 +257,8 @@ export function useTelemetry() {
     connected,
     now,
     history,
+    flowSimEnabled,
+    toggleFlowSim,
+    flowAnimating,
   }
 }

@@ -38,7 +38,8 @@
 import { useId } from 'react'
 import { WATER_COLOR, MetalStops } from './PipeStraightWidget'
 
-export default function PipeElbowWidget() {
+export default function PipeElbowWidget({ telemetry }) {
+  const flowing = Boolean(telemetry?.flowAnimating)
   const uid = useId()
   const vId = `elbowV-${uid}`
   const hId = `elbowH-${uid}`
@@ -96,7 +97,7 @@ export default function PipeElbowWidget() {
         strokeWidth="10"
         strokeLinecap="round"
         strokeDasharray="20 20"
-        className="animate-dashFlow"
+        className={flowing ? 'animate-dashFlow' : undefined}
       />
 
       {/* top flange (flush with the top edge — the entry port) — always

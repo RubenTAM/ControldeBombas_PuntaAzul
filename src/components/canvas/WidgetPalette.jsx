@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { WIDGET_CATALOG } from './registry.js'
-import { IconPencil } from '../../icons.jsx'
+import { IconPencil, IconDroplet } from '../../icons.jsx'
 
 // Palette of draggable widget "chips". Dropping one on the canvas (handled
 // in DashboardCanvas) adds an instance at the exact drop point. This is the
@@ -11,8 +11,18 @@ import { IconPencil } from '../../icons.jsx'
 // next to the pipe chips it's an alternative to — it used to float over
 // the canvas itself, which put it away from every other "make a pipe"
 // control and over whatever was already drawn there.
-export default function WidgetPalette({ canvas }) {
+//
+// The "Simulación de flujo" toggle sits right beside it for the same
+// reason: it's the other control that affects how the pipe pieces look.
+// It's OFF by default (see useTelemetry's flowSimEnabled) — with no real
+// tag connected yet, nothing on the canvas should animate or start/stop on
+// its own. Turning it ON previews the demo look (animated water + the
+// AUTO pumps cycling against the simulated tank level); it is not real
+// flow telemetry, and once a real tag drives a pump, THAT pump's own
+// running state — not this switch — is what will make its pipes flow.
+export default function WidgetPalette({ canvas, telemetry }) {
   const { drawMode, toggleDrawMode, pendingPieces, acceptSketch, cancelSketch } = canvas
+  const flowSimEnabled = Boolean(telemetry?.flowSimEnabled)
   const [pointerDrag, setPointerDrag] = useState(null)
   const cleanupRef = useRef(null)
   const groups = ['Proceso', 'Tubería', 'Información', 'Estructura']
@@ -108,6 +118,22 @@ export default function WidgetPalette({ canvas }) {
                 </button>
               </div>
             ))}
+
+          {group === 'Tubería' && telemetry && (
+            <button
+              onClick={telemetry.toggleFlowSim}
+              title="Solo es una simulación visual del flujo en las tuberías — no viene de ningún sensor real. Con una bomba realmente encendida (por tag real, o por esta simulación) sus tuberías se ven fluyendo; si no, se ven quietas."
+              className={[
+                'flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold shadow-sm ring-1 transition-colors',
+                flowSimEnabled
+                  ? 'bg-navy-600 text-white ring-navy-600'
+                  : 'border-ink-100 bg-white text-navy-500 ring-ink-100 hover:bg-navy-50',
+              ].join(' ')}
+            >
+              <IconDroplet className="h-4 w-4" />
+              {flowSimEnabled ? 'Apagar simulación de flujo' : 'Encender simulación de flujo'}
+            </button>
+          )}
         </div>
       ))}
       {pointerDrag && (
