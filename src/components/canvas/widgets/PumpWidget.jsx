@@ -89,7 +89,7 @@ function PumpConnection({ orientation, length, scale }) {
   )
 }
 
-export default function PumpWidget({ telemetry, config, onConfigChange, editMode, width, height }) {
+export default function PumpWidget({ telemetry, config, width, height }) {
   const pumpId = config.pumpId ?? 'p1'
   const pump = telemetry.pumps[pumpId]
   const widgetW = width ?? 166
@@ -105,17 +105,6 @@ export default function PumpWidget({ telemetry, config, onConfigChange, editMode
 
   return (
     <div className="relative h-full w-full overflow-visible">
-      {editMode && (
-        <select
-          value={pumpId}
-          onChange={(e) => onConfigChange({ pumpId: e.target.value })}
-          className="absolute bottom-full left-0 mb-2 w-full rounded-lg border border-ink-100 bg-navy-50/60 px-2 py-1.5 text-xs font-semibold text-ink-500"
-        >
-          <option value="p1">Bomba 1</option>
-          <option value="p2">Bomba 2</option>
-        </select>
-      )}
-
       <div
         className="absolute"
         style={{ left: cardLeft, top: cardTop, width: CARD_WIDTH, height: CARD_HEIGHT }}

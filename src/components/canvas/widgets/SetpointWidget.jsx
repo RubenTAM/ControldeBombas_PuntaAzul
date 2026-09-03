@@ -19,24 +19,13 @@ const SETPOINT_META = {
   },
 }
 
-export default function SetpointWidget({ telemetry, config, editMode, onConfigChange }) {
+export default function SetpointWidget({ telemetry, config }) {
   const key = config?.key === 'stop' ? 'stop' : 'start'
   const meta = SETPOINT_META[key]
   const value = telemetry.thresholds[key]
 
   return (
     <div className="flex w-full flex-col gap-2.5">
-      {editMode && (
-        <select
-          value={key}
-          onChange={(e) => onConfigChange({ key: e.target.value })}
-          onMouseDown={(e) => e.stopPropagation()}
-          className="w-full rounded-lg border border-ink-100 bg-navy-50/60 px-2 py-1.5 text-xs font-semibold text-ink-500"
-        >
-          <option value="start">Nivel bajo (arranque)</option>
-          <option value="stop">Nivel alto (paro)</option>
-        </select>
-      )}
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-semibold text-ink-500">{meta.label}</p>
         <span className="font-mono text-lg font-bold tabular-nums text-navy-900">{value}%</span>

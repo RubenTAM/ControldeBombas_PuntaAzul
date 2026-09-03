@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Sidebar from './components/Sidebar.jsx'
 import Header from './components/Header.jsx'
 import BrokerPage from './components/BrokerPage.jsx'
@@ -15,6 +15,16 @@ export default function App() {
   const broker = useBrokerConnections()
   const [active, setActive] = useState('dashboard')
   const [navOpen, setNavOpen] = useState(false)
+
+  useEffect(() => {
+    const topics = canvas.widgets.flatMap((widget) => [
+      widget.config?.readTag,
+      widget.config?.runningTag,
+      widget.config?.modeTag,
+      widget.config?.writeTag,
+    ])
+    broker.setSubscriptions(topics)
+  }, [canvas.widgets, broker.setSubscriptions])
 
   return (
     <div className="flex h-screen overflow-hidden bg-navy-50">
@@ -82,7 +92,7 @@ export default function App() {
 
               {canvas.editMode && <WidgetPalette canvas={canvas} />}
 
-              <DashboardCanvas telemetry={telemetry} canvas={canvas} />
+              <DashboardCanvas telemetry={telemetry} canvas={canvas} broker={broker} />
             </>
           ) : active === 'broker' ? (
             <BrokerPage broker={broker} />

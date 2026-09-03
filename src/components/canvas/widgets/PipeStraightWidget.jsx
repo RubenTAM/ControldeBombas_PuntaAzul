@@ -38,10 +38,9 @@ export const MetalStops = () => (
   </>
 )
 
-function Flange({ heightPx, gradId }) {
-  const w = Math.max(3, Math.round(heightPx * FLANGE_RATIO))
+function Flange({ heightPx, widthPx, gradId }) {
   return (
-    <svg viewBox="0 0 6 24" width={w} height={heightPx} className="shrink-0 overflow-visible">
+    <svg viewBox="0 0 6 24" width={widthPx} height={heightPx} className="min-w-0 shrink-0 overflow-hidden">
       <defs>
         {/* matches the tube's own visible slice (y4..20), not this
             flange's full 0..24 height — with the water line (10 thick,
@@ -61,21 +60,28 @@ function Flange({ heightPx, gradId }) {
   )
 }
 
-export default function PipeStraightWidget({ height = 24, portsOpen = [true, true] }) {
+export default function PipeStraightWidget({ width = 140, height = 24, portsOpen = [true, true] }) {
   const [openStart, openEnd] = portsOpen
   const uid = useId()
   const gradId = `pipeMetal-${uid}`
+  const visibleFlanges = Number(openStart !== false) + Number(openEnd !== false)
+  const naturalFlangeWidth = Math.max(3, Math.round(height * FLANGE_RATIO))
+  const flangeWidth = visibleFlanges > 0 ? Math.min(naturalFlangeWidth, width / visibleFlanges) : 0
   return (
     <div
-      className="flex h-full w-full items-stretch overflow-visible"
+      className="flex h-full w-full items-stretch overflow-hidden"
       style={{ filter: 'drop-shadow(0 1.5px 2px rgba(11,18,32,0.28))' }}
     >
-      {openStart !== false && <Flange heightPx={height} gradId={gradId} />}
+      {openStart !== false && <Flange heightPx={height} widthPx={flangeWidth} gradId={gradId} />}
 
       {/* tube: same 16-unit diameter / 24-tall viewBox as every other pipe
           piece, stretched horizontally only. Same gradient id + "0..24"
           coordinate space as the flanges above, so they always match. */}
-      <svg viewBox="0 0 100 24" preserveAspectRatio="none" className="h-full flex-1 overflow-visible">
+      <svg
+        viewBox="0 0 100 24"
+        preserveAspectRatio="none"
+        className="h-full w-0 min-w-0 flex-1 overflow-visible"
+      >
         <defs>
           <linearGradient id={gradId} gradientUnits="userSpaceOnUse" x1="0" y1="4" x2="0" y2="20">
             <MetalStops />
@@ -98,7 +104,7 @@ export default function PipeStraightWidget({ height = 24, portsOpen = [true, tru
         />
       </svg>
 
-      {openEnd !== false && <Flange heightPx={height} gradId={gradId} />}
+      {openEnd !== false && <Flange heightPx={height} widthPx={flangeWidth} gradId={gradId} />}
     </div>
   )
 }

@@ -26,15 +26,6 @@ function buildWeekSeries(endTime) {
   })
 }
 
-function Stat({ label, value, accent }) {
-  return (
-    <div className="rounded-xl border border-ink-100 bg-navy-50/45 px-3 py-2">
-      <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-ink-400">{label}</p>
-      <p className="font-mono text-sm font-bold tabular-nums" style={{ color: accent ?? '#1c2a4d' }}>{value}</p>
-    </div>
-  )
-}
-
 export default function LevelHistoryChart({ telemetry, config, editMode, onConfigChange }) {
   const { history, thresholds, limits, now, level } = telemetry
   const eyebrow = config?.eyebrow ?? 'Tendencia de proceso'
@@ -67,17 +58,6 @@ export default function LevelHistoryChart({ telemetry, config, editMode, onConfi
     const linePath = points.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
     const areaPath = `${linePath} L${points.at(-1).x.toFixed(1)},${PAD_T + PLOT_H} L${points[0].x.toFixed(1)},${PAD_T + PLOT_H} Z`
     return { linePath, areaPath, points, minT, maxT }
-  }, [data])
-
-  const stats = useMemo(() => {
-    if (!data.length) return { min: 0, max: 0, avg: 0, delta: 0 }
-    const values = data.map((p) => p.level)
-    return {
-      min: Math.min(...values),
-      max: Math.max(...values),
-      avg: values.reduce((sum, value) => sum + value, 0) / values.length,
-      delta: values.at(-1) - values[0],
-    }
   }, [data])
 
   const yFor = (value) => PAD_T + (1 - value / 100) * PLOT_H
@@ -154,13 +134,6 @@ export default function LevelHistoryChart({ telemetry, config, editMode, onConfi
             </button>
           ))}
         </div>
-      </div>
-
-      <div className="mb-3 grid shrink-0 grid-cols-4 gap-2">
-        <Stat label="Actual" value={`${level.toFixed(1)}%`} accent="#0891a8" />
-        <Stat label="Promedio" value={`${stats.avg.toFixed(1)}%`} />
-        <Stat label="Rango" value={`${stats.min.toFixed(0)}–${stats.max.toFixed(0)}%`} />
-        <Stat label="Variación" value={`${stats.delta >= 0 ? '+' : ''}${stats.delta.toFixed(1)}%`} accent={stats.delta >= 0 ? '#0ca30c' : '#c47f00'} />
       </div>
 
       <div className="relative min-h-0 flex-1 rounded-xl border border-ink-100 bg-gradient-to-b from-white to-navy-50/35 p-1">

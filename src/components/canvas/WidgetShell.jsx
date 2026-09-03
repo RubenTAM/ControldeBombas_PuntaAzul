@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { IconGrip, IconX, IconRotate, IconSendBack } from '../../icons.jsx'
+import { IconGrip, IconX, IconRotate, IconSendBack, IconPencil } from '../../icons.jsx'
 import { useTransformable } from './useTransformable.js'
 
 // Generic chrome + move/resize/rotate mechanics for every widget placed on
@@ -116,6 +116,8 @@ export function WidgetReachHandle({
   onFront,
   onBack,
   onRemove,
+  onConfigure,
+  configured = false,
 }) {
   const rootRef = useRef(null)
   const { startMove, startResize, startRotate } = useTransformable({
@@ -148,10 +150,21 @@ export function WidgetReachHandle({
       <button
         onPointerDown={startMove}
         title={title ? `Mover ${title}` : 'Mover'}
-        className="pointer-events-auto absolute -left-2.5 -top-2.5 flex h-7 w-7 touch-none select-none items-center justify-center rounded-full bg-white text-navy-500 shadow-sm ring-1 ring-navy-300 active:cursor-grabbing"
+        className="pointer-events-auto absolute -left-2 -top-2 flex h-5 w-5 touch-none select-none items-center justify-center rounded-full bg-white text-navy-500 shadow-sm ring-1 ring-navy-300 active:cursor-grabbing"
       >
-        <IconGrip className="h-3.5 w-3.5" />
+        <IconGrip className="h-2.5 w-2.5" />
       </button>
+      {onConfigure && (
+        <button
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={onConfigure}
+          title="Configurar fuente de datos"
+          className="pointer-events-auto absolute -top-2 left-6 flex h-5 w-5 items-center justify-center rounded-full bg-white text-live-600 shadow-sm ring-1 ring-live-200 hover:bg-live-100"
+        >
+          <IconPencil className="h-2.5 w-2.5" />
+          {configured && <span className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-status-good ring-1 ring-white" />}
+        </button>
+      )}
       {/* only panels pass onBack; never coincides with the rotate button
           below (only bare pipe pieces are rotatable, and those never pass
           onBack), so both can safely claim the same top-center spot */}
@@ -160,32 +173,32 @@ export function WidgetReachHandle({
           onPointerDown={(e) => e.stopPropagation()}
           onClick={onBack}
           title="Enviar atrás"
-          className="pointer-events-auto absolute -top-2.5 left-1/2 flex h-7 w-7 touch-manipulation items-center justify-center -translate-x-1/2 rounded-full bg-white text-navy-400 shadow-sm ring-1 ring-navy-200 hover:text-navy-600"
+          className="pointer-events-auto absolute -top-2 left-1/2 flex h-5 w-5 touch-manipulation items-center justify-center -translate-x-1/2 rounded-full bg-white text-navy-400 shadow-sm ring-1 ring-navy-200 hover:text-navy-600"
         >
-          <IconSendBack className="h-3.5 w-3.5" />
+          <IconSendBack className="h-2.5 w-2.5" />
         </button>
       )}
       <button
         onClick={onRemove}
         title={title ? `Quitar ${title}` : 'Quitar'}
-        className="pointer-events-auto absolute -right-2.5 -top-2.5 flex h-7 w-7 touch-manipulation items-center justify-center rounded-full bg-white text-ink-300 shadow-sm ring-1 ring-ink-200 hover:text-status-critical"
+        className="pointer-events-auto absolute -right-2 -top-2 flex h-5 w-5 touch-manipulation items-center justify-center rounded-full bg-white text-ink-300 shadow-sm ring-1 ring-ink-200 hover:text-status-critical"
       >
-        <IconX className="h-3.5 w-3.5" />
+        <IconX className="h-2.5 w-2.5" />
       </button>
       {rotatable && (
         <button
           onPointerDown={(e) => startRotate(e, rootRef)}
           title="Girar"
-          className="pointer-events-auto absolute -top-8 left-1/2 flex h-7 w-7 touch-none select-none -translate-x-1/2 cursor-grab items-center justify-center rounded-full bg-white text-navy-500 shadow-sm ring-1 ring-navy-200 active:cursor-grabbing"
+          className="pointer-events-auto absolute -top-7 left-1/2 flex h-5 w-5 touch-none select-none -translate-x-1/2 cursor-grab items-center justify-center rounded-full bg-white text-navy-500 shadow-sm ring-1 ring-navy-200 active:cursor-grabbing"
         >
-          <IconRotate className="h-3.5 w-3.5" />
+          <IconRotate className="h-2.5 w-2.5" />
         </button>
       )}
       {resizeAxis !== 'none' && (
         <div
           onPointerDown={(e) => startResize(e, resizeAxis)}
           title="Redimensionar"
-          className="pointer-events-auto absolute -bottom-2.5 -right-2.5 h-7 w-7 touch-none select-none cursor-se-resize rounded-md border-b-2 border-r-2 border-navy-400 bg-white/90"
+          className="pointer-events-auto absolute -bottom-2 -right-2 h-5 w-5 touch-none select-none cursor-se-resize rounded border-b-2 border-r-2 border-navy-400 bg-white/90"
         />
       )}
     </div>

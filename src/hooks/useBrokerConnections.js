@@ -31,8 +31,11 @@ export function useBrokerConnections() {
   const [status, setStatus] = useState('disconnected')
   const [statusMessage, setStatusMessage] = useState('Sin conexión activa')
   const [activeConnection, setActiveConnection] = useState(null)
+  const [topicValues, setTopicValues] = useState({})
+  const [topicHistory, setTopicHistory] = useState({})
   const clientRef = useRef(null)
   const attemptRef = useRef(0)
+  const topicsRef = useRef([])
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(connections))
@@ -47,6 +50,25 @@ export function useBrokerConnections() {
     setStatus('disconnected')
     setStatusMessage('Conexión cerrada')
     setActiveConnection(null)
+  }, [])
+
+  const setSubscriptions = useCallback((topics) => {
+    const next = [...new Set((topics || []).map((topic) => topic?.trim()).filter(Boolean))]
+    const previous = topicsRef.current
+    topicsRef.current = next
+    const client = clientRef.current
+    if (!client?.connected) return
+    const removed = previous.filter((topic) => !next.includes(topic))
+    const added = next.filter((topic) => !previous.includes(topic))
+    if (removed.length) client.unsubscribe(removed)
+    if (added.length) client.subscribe(added, { qos: 0 })
+  }, [])
+
+  const publish = useCallback((topic, value) => {
+    const cleanTopic = topic?.trim()
+    if (!cleanTopic || !clientRef.current?.connected) return false
+    clientRef.current.publish(cleanTopic, String(value), { qos: 0, retain: false })
+    return true
   }, [])
 
   const removeConnection = useCallback((id) => {
@@ -83,6 +105,26 @@ export function useBrokerConnections() {
     })
     clientRef.current = client
 
+    client.on('message', (topic, payload) => {
+      const raw = payload.toString().trim()
+      let value = raw
+      try {
+        const parsed = JSON.parse(raw)
+        value = parsed && typeof parsed === 'object' && 'value' in parsed ? parsed.value : parsed
+      } catch {
+        // Plain PLC values (e.g. 51.2, AUTO or true) are valid payloads.
+      }
+      const receivedAt = Date.now()
+      setTopicValues((current) => ({ ...current, [topic]: { value, receivedAt } }))
+      const numeric = Number(value)
+      if (Number.isFinite(numeric)) {
+        setTopicHistory((current) => ({
+          ...current,
+          [topic]: [...(current[topic] || []), { t: receivedAt, level: numeric }].slice(-500),
+        }))
+      }
+    })
+
     const timeout = window.setTimeout(() => {
       if (attemptRef.current !== attempt) return
       client.end(true)
@@ -109,6 +151,7 @@ export function useBrokerConnections() {
       setActiveConnection(saved)
       setStatus('connected')
       setStatusMessage(connack.sessionPresent ? 'Conectado · sesión recuperada' : 'Conectado · sesión nueva')
+      if (topicsRef.current.length) client.subscribe(topicsRef.current, { qos: 0 })
     })
 
     client.once('error', (error) => {
@@ -141,5 +184,9 @@ export function useBrokerConnections() {
     connect,
     disconnect,
     removeConnection,
+    setSubscriptions,
+    publish,
+    topicValues,
+    topicHistory,
   }
 }

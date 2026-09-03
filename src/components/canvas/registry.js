@@ -62,6 +62,7 @@ export const WIDGET_REGISTRY = {
     minH: 212,
     resizeAxis: 'none',
     rotatable: false,
+    configurable: true,
     bare: true,
     // Port 0: inlet flange at the bottom-center, flush with the widget's
     // own bottom edge — PumpWidget bottom-anchors the card + flange stack
@@ -93,6 +94,7 @@ export const WIDGET_REGISTRY = {
     minH: 190,
     resizeAxis: 'both',
     rotatable: false,
+    configurable: true,
     // bare (no WidgetShell card padding/header) so the SVG fills the
     // widget's box exactly edge-to-edge — the tank draws its own
     // card-style background instead. This is what keeps the outlet port
@@ -113,6 +115,7 @@ export const WIDGET_REGISTRY = {
     minH: 180,
     resizeAxis: 'both',
     rotatable: false,
+    configurable: true,
   },
   modeselect: {
     label: 'Selector Auto/Manual',
@@ -124,6 +127,7 @@ export const WIDGET_REGISTRY = {
     minH: 110,
     resizeAxis: 'both',
     rotatable: false,
+    configurable: true,
   },
   setpoint: {
     label: 'Setpoint de nivel',
@@ -135,6 +139,7 @@ export const WIDGET_REGISTRY = {
     minH: 130,
     resizeAxis: 'both',
     rotatable: false,
+    configurable: true,
   },
   'pipe-straight': {
     label: 'Tubería recta',
@@ -218,6 +223,7 @@ export const WIDGET_REGISTRY = {
     minH: 280,
     resizeAxis: 'both',
     rotatable: false,
+    configurable: true,
     bare: true,
   },
   'history-table': {
@@ -230,6 +236,7 @@ export const WIDGET_REGISTRY = {
     minH: 200,
     resizeAxis: 'both',
     rotatable: false,
+    configurable: true,
     bare: true,
   },
   panel: {

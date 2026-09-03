@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import WidgetShell, { WidgetReachHandle } from './WidgetShell.jsx'
+import TagConfigModal from './TagConfigModal.jsx'
 import { WIDGET_REGISTRY } from './registry.js'
 import { getPortWorld, placeAttached, CONNECT_THRESHOLD } from './ports.js'
 import { sketchToPieces, simplify, orthogonalize, findAlignmentGuide } from './sketchToPipes.js'
@@ -43,7 +44,75 @@ const ATTACH_CHOICES = [
   { type: 'pump', label: 'Bomba', icon: IconPump },
 ]
 
-export default function DashboardCanvas({ telemetry, canvas }) {
+function mqttValue(broker, topic) {
+  return topic?.trim() ? broker?.topicValues?.[topic.trim()]?.value : undefined
+}
+
+function asBoolean(value) {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'number') return value !== 0
+  if (typeof value !== 'string') return undefined
+  const normalized = value.trim().toLowerCase()
+  if (['1', 'true', 'on', 'running', 'run', 'encendida', 'encendido'].includes(normalized)) return true
+  if (['0', 'false', 'off', 'stopped', 'stop', 'detenida', 'detenido'].includes(normalized)) return false
+  return undefined
+}
+
+function bindTelemetry(widget, widgets, telemetry, broker) {
+  const config = widget.config || {}
+  const next = { ...telemetry }
+
+  if (widget.type === 'tank' || widget.type === 'levelbar') {
+    const value = Number(mqttValue(broker, config.readTag))
+    if (Number.isFinite(value)) {
+      next.level = Math.max(0, Math.min(100, value))
+      next.volume = Math.round((next.level / 100) * telemetry.capacity * 10) / 10
+    }
+  }
+
+  if (widget.type === 'pump') {
+    const running = asBoolean(mqttValue(broker, config.runningTag))
+    if (running !== undefined) {
+      const pumpId = config.pumpId || 'p1'
+      next.pumps = { ...telemetry.pumps, [pumpId]: { ...telemetry.pumps[pumpId], running } }
+    }
+  }
+
+  if (widget.type === 'modeselect') {
+    const rawMode = mqttValue(broker, config.modeTag)
+    const mode = typeof rawMode === 'string' ? rawMode.trim().toUpperCase() : rawMode === 1 ? 'AUTO' : rawMode === 0 ? 'MANUAL' : undefined
+    if (mode === 'AUTO' || mode === 'MANUAL') {
+      const pumpId = config.pumpId || 'p1'
+      next.pumps = { ...telemetry.pumps, [pumpId]: { ...telemetry.pumps[pumpId], mode } }
+    }
+  }
+
+  if (widget.type === 'setpoint' && config.writeTag) {
+    const key = config.key === 'stop' ? 'stop' : 'start'
+    const brokerValue = Number(mqttValue(broker, config.writeTag))
+    if (Number.isFinite(brokerValue)) next.thresholds = { ...telemetry.thresholds, [key]: brokerValue }
+    next.setThreshold = (changedKey, value) => {
+      telemetry.setThreshold(changedKey, value)
+      broker?.publish(config.writeTag, value)
+    }
+  }
+
+  if (widget.type === 'levelhistory' || widget.type === 'history-table') {
+    const tank = widgets.find((item) => item.id === config.sourceTankId && item.type === 'tank')
+    const topic = tank?.config?.readTag?.trim()
+    const liveHistory = topic ? broker?.topicHistory?.[topic] : null
+    const current = Number(mqttValue(broker, topic))
+    if (liveHistory?.length) next.history = liveHistory
+    if (Number.isFinite(current)) {
+      next.level = current
+      next.now = broker.topicValues[topic].receivedAt
+    }
+  }
+
+  return next
+}
+
+export default function DashboardCanvas({ telemetry, canvas, broker }) {
   const {
     widgets,
     editMode,
@@ -69,6 +138,7 @@ export default function DashboardCanvas({ telemetry, canvas }) {
   const canvasRef = useRef(null)
   const [layoutWidth, setLayoutWidth] = useState(0)
   const [openPicker, setOpenPicker] = useState(null) // { widgetId, portIndex, port }
+  const [configuringId, setConfiguringId] = useState(null)
   const isDrawingRef = useRef(null)
   const strokePointsRef = useRef([])
 
@@ -607,7 +677,7 @@ export default function DashboardCanvas({ telemetry, canvas }) {
               onRemove={() => removeWidget(w.id)}
             >
               <Component
-                telemetry={telemetry}
+                telemetry={bindTelemetry(w, widgets, telemetry, broker)}
                 config={w.config}
                 editMode={editMode}
                 onConfigChange={(patch) => updateWidgetConfig(w.id, patch)}
@@ -651,6 +721,8 @@ export default function DashboardCanvas({ telemetry, canvas }) {
                 onFront={() => bringToFront(w.id)}
                 onBack={w.type === 'panel' ? () => sendToBack(w.id) : undefined}
                 onRemove={() => removeWidget(w.id)}
+                onConfigure={def.configurable ? () => setConfiguringId(w.id) : undefined}
+                configured={Boolean(w.config?.readTag || w.config?.runningTag || w.config?.modeTag || w.config?.writeTag || w.config?.sourceTankId)}
               />
             )
           })}
@@ -670,7 +742,7 @@ export default function DashboardCanvas({ telemetry, canvas }) {
                       setOpenPicker(isOpenHere ? null : { widgetId: p.widgetId, portIndex: p.portIndex, port: p })
                     }}
                     className={[
-                      'flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-sm font-bold shadow-sm ring-1 transition-colors',
+                      'flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-xs font-bold shadow-sm ring-1 transition-colors',
                       isOpenHere
                         ? 'bg-navy-600 text-white ring-navy-600'
                         : 'bg-white text-navy-500 ring-navy-300 hover:bg-navy-50',
@@ -691,9 +763,9 @@ export default function DashboardCanvas({ telemetry, canvas }) {
                             key={choice.type}
                             onClick={() => handleAttach(p, choice.type)}
                             title={choice.label}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg text-navy-500 hover:bg-navy-50"
+                            className="flex h-7 w-7 items-center justify-center rounded-lg text-navy-500 hover:bg-navy-50"
                           >
-                            <Icon className="h-4 w-4" />
+                            <Icon className="h-3.5 w-3.5" />
                           </button>
                         )
                       })}
@@ -740,6 +812,20 @@ export default function DashboardCanvas({ telemetry, canvas }) {
             </svg>
           </div>
         )}
+
+        {configuringId && (() => {
+          const widget = widgets.find((item) => item.id === configuringId)
+          const def = widget && WIDGET_REGISTRY[widget.type]
+          if (!widget || !def) return null
+          return (
+            <TagConfigModal
+              widget={{ ...widget, label: def.label }}
+              widgets={widgets}
+              onSave={(config) => updateWidgetConfig(widget.id, config)}
+              onClose={() => setConfiguringId(null)}
+            />
+          )
+        })()}
 
         {/* ghost preview of the piece chain sketchToPipes.js computed from
             the last stroke — shown until the user accepts or cancels it */}
