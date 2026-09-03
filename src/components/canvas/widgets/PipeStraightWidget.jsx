@@ -89,21 +89,24 @@ export default function PipeStraightWidget({ width = 140, height = 24, portsOpen
           </linearGradient>
         </defs>
         <rect x="0" y="4" width="100" height="16" fill={`url(#${gradId})`} />
-        {/* "water" through the pipe — only animates while flowAnimating is
-            true (simulation toggle on AND a pump actually running); still
-            filled but static otherwise, since this is not a real
-            flow-rate reading */}
-        <line
-          x1="0"
-          y1="12"
-          x2="100"
-          y2="12"
-          stroke={WATER_COLOR}
-          strokeWidth="10"
-          strokeLinecap="round"
-          strokeDasharray="20 20"
-          className={flowing ? 'animate-dashFlow' : undefined}
-        />
+        {/* "water" through the pipe — only DRAWN AT ALL while flowing is
+            true (simulation toggle on AND a pump actually running); with
+            no pump running the pipe shows empty/gray metal, no blue, not
+            just a still blue line (a still line still read as "there's
+            water in here" when there wasn't) */}
+        {flowing && (
+          <line
+            x1="0"
+            y1="12"
+            x2="100"
+            y2="12"
+            stroke={WATER_COLOR}
+            strokeWidth="10"
+            strokeLinecap="round"
+            strokeDasharray="20 20"
+            className="animate-dashFlow"
+          />
+        )}
       </svg>
 
       {openEnd !== false && <Flange heightPx={height} widthPx={flangeWidth} gradId={gradId} />}

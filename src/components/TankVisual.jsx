@@ -106,20 +106,25 @@ export default function TankVisual({ level, volume, capacity, connectedTypes, la
           <rect x={cx - 8} y={BOTTOM_Y - 10} width={16} height={30} fill={`url(#${outletId})`} />
           {/* "water" down the outlet stub, same treatment as the canvas
               pipe pieces — stops before the flange so the flange still
-              caps it visually. Only animates while `flowing` is true (see
-              useTelemetry's flowAnimating: simulation toggle on AND a
-              pump actually running) — otherwise it's a static fill. */}
-          <line
-            x1={cx}
-            y1={BOTTOM_Y - 10}
-            x2={cx}
-            y2={BOTTOM_Y + 18}
-            stroke="#3b82f6"
-            strokeWidth={10}
-            strokeLinecap="round"
-            strokeDasharray="20 20"
-            className={flowing ? 'animate-dashFlow' : undefined}
-          />
+              caps it visually. Only DRAWN AT ALL while `flowing` is true
+              (see useTelemetry's flowAnimating: simulation toggle on AND
+              a pump actually running) — with no pump running/simulation
+              off, the stub shows no blue at all, not just a still one,
+              since a still blue line still read as "there's water here"
+              when there isn't. */}
+          {flowing && (
+            <line
+              x1={cx}
+              y1={BOTTOM_Y - 10}
+              x2={cx}
+              y2={BOTTOM_Y + 18}
+              stroke="#3b82f6"
+              strokeWidth={10}
+              strokeLinecap="round"
+              strokeDasharray="20 20"
+              className="animate-dashFlow"
+            />
+          )}
           {/* always drawn now — see the comment above connectedTypes */}
           <rect x={cx - 12} y={BOTTOM_Y + 20} width={24} height={6} rx={1} fill={`url(#${outletId})`} />
           <circle cx={cx - 8} cy={BOTTOM_Y + 23} r={1.3} fill="#2b303c" />
@@ -160,9 +165,6 @@ export default function TankVisual({ level, volume, capacity, connectedTypes, la
         )}
         <text x={cx} y={148} textAnchor="middle" className="font-mono text-[34px] font-bold" fill="#0b1220">
           {level.toFixed(0)}%
-        </text>
-        <text x={cx} y={170} textAnchor="middle" className="font-mono text-[12px] font-medium" fill="#324879">
-          {volume.toFixed(1)} / {capacity.toFixed(1)} m³
         </text>
       </svg>
 

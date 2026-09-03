@@ -26,7 +26,7 @@ export default function Sidebar({ active, onNavigate, alarmCount, open = false, 
           open ? 'flex translate-x-0' : 'hidden -translate-x-full',
         ].join(' ')}
       >
-        <div className="flex min-h-[92px] items-center gap-3 px-5 py-4">
+        <div className="flex min-h-[92px] items-center gap-3 border-b border-white/[0.06] px-5 py-4">
           <img
             src={puntaAzulLogo}
             alt="Punta Azul Residencial & Fitness"

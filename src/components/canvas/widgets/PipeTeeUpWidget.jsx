@@ -61,16 +61,19 @@ export default function PipeTeeUpWidget({ telemetry }) {
       <circle cx="28" cy="28" r="1.3" fill="#2b303c" />
       <circle cx="44" cy="28" r="1.3" fill="#2b303c" />
 
-      {/* animated "water" — through run plus the north branch */}
-      <path
-        d="M0,36 L24,36 M48,36 L72,36 M36,23 L36,0"
-        fill="none"
-        stroke={WATER_COLOR}
-        strokeWidth="10"
-        strokeLinecap="round"
-        strokeDasharray="20 20"
-        className={flowing ? 'animate-dashFlow' : undefined}
-      />
+      {/* "water" — through run plus the north branch. Only drawn at all
+          while flowing (no pump running = no blue, empty gray pipe). */}
+      {flowing && (
+        <path
+          d="M0,36 L24,36 M48,36 L72,36 M36,23 L36,0"
+          fill="none"
+          stroke={WATER_COLOR}
+          strokeWidth="10"
+          strokeLinecap="round"
+          strokeDasharray="20 20"
+          className="animate-dashFlow"
+        />
+      )}
 
       {/* west flange (flush with left edge) — always drawn */}
       <rect x="0" y="24" width="6" height="24" rx="1" fill={`url(#${hId})`} />

@@ -86,19 +86,22 @@ export default function PipeElbowWidget({ telemetry }) {
       {/* horizontal exit stub: (60,28) to (72,44) — centerline y=36 */}
       <rect x="60" y="28" width="12" height="16" fill={`url(#${hId})`} />
 
-      {/* animated "water" following the same centerline as the tube —
-          straight down the vertical stub, around the bend (radius 24,
-          centered on (60,12), the exact midline between the ring's inner
-          and outer edges), then straight along the horizontal stub */}
-      <path
-        d="M36,0 L36,12 A24,24 0 0 0 60,36 L72,36"
-        fill="none"
-        stroke={WATER_COLOR}
-        strokeWidth="10"
-        strokeLinecap="round"
-        strokeDasharray="20 20"
-        className={flowing ? 'animate-dashFlow' : undefined}
-      />
+      {/* "water" following the same centerline as the tube — straight down
+          the vertical stub, around the bend (radius 24, centered on
+          (60,12), the exact midline between the ring's inner and outer
+          edges), then straight along the horizontal stub. Only drawn at
+          all while flowing (no pump running = no blue, empty gray pipe). */}
+      {flowing && (
+        <path
+          d="M36,0 L36,12 A24,24 0 0 0 60,36 L72,36"
+          fill="none"
+          stroke={WATER_COLOR}
+          strokeWidth="10"
+          strokeLinecap="round"
+          strokeDasharray="20 20"
+          className="animate-dashFlow"
+        />
+      )}
 
       {/* top flange (flush with the top edge — the entry port) — always
           drawn, connected or not: an elbow is a bolted fitting */}
