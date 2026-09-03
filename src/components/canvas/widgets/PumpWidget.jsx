@@ -18,14 +18,19 @@ const DEFAULT_HEIGHT = 212
 
 // Fixed card geometry. The connection roots are expressed in the card's
 // own coordinate space and the runs stretch from there to the widget ports.
+// SIDE_ROOT_X/SIDE_ROOT_Y/BOTTOM_ROOT_Y are tuned by eye to where the pump
+// PHOTO's own body/base plate actually sit in PumpCard.jsx's equipment
+// art (measured directly off that image) — not to the actual logical
+// ports (registry.js's fixed fx/fy fractions, untouched here), which stay
+// exactly where every already-placed pump and its connected pipes expect
+// them. These roots only decide how much of the connecting tube is drawn
+// between the photo and that fixed port, so the pipe reads as growing out
+// of the pump body instead of floating next to it.
 const CARD_WIDTH = 142
 const CARD_HEIGHT = 182
-// Internal artwork roots only. Changing these does NOT move either public
-// canvas port: the connection SVG simply grows/shrinks inside the same fixed
-// widget until it reaches the original port coordinate.
-const SIDE_ROOT_X = 125
+const SIDE_ROOT_X = 106
 const SIDE_ROOT_Y = 144
-const BOTTOM_ROOT_Y = 177
+const BOTTOM_ROOT_Y = 167
 
 // The discharge leaves the pump volute, not the middle of the information
 // card. At the default 212px widget height this lands 38px below the old

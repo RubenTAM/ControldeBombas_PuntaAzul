@@ -1,32 +1,63 @@
+import { useId } from 'react'
 import { IconAlertTriangle } from '../icons.jsx'
-import pumpHorizontalBlue from '../assets/pump-horizontal-blue.png'
+import pumpPhoto from '../assets/pump-photo.jpg'
+
+// Equipment art dimensions: the photo itself, fit to the card's own 142px
+// width (never cropped/overflowed — CARD_WIDTH in PumpWidget.jsx is what
+// this has to match) at its native aspect ratio, so nothing is stretched
+// or sliced off. 104.5 = 142 * (photo's own height/width ratio).
+const EQUIPMENT_W = 142
+const EQUIPMENT_H = 104.5
 
 function PumpEquipment({ running, fault }) {
+  const uid = useId().replace(/:/g, '')
+  const glowId = `pump-glow-${uid}`
+  const alarmId = `pump-alarm-${uid}`
+
   return (
-    <div
-      className="relative h-[124px] w-[142px]"
+    <svg
+      viewBox={`0 0 ${EQUIPMENT_W} ${EQUIPMENT_H}`}
+      className="h-[104.5px] w-[142px] overflow-visible"
       role="img"
       aria-label="Bomba centrífuga horizontal"
     >
-      <img
-        src={pumpHorizontalBlue}
-        alt=""
-        draggable="false"
-        className="absolute inset-x-0 bottom-0 h-[100px] w-[142px] origin-bottom scale-y-[0.70] select-none object-contain object-bottom"
-        style={{
-          filter: fault
-            ? 'drop-shadow(0 0 4px rgba(239,68,68,.65))'
-            : running
-              ? 'drop-shadow(0 0 4px rgba(34,197,94,.38))'
-              : 'drop-shadow(0 2px 2px rgba(15,35,65,.2))',
-        }}
+      <defs>
+        <filter id={glowId} x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+        <linearGradient id={alarmId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ef4444" />
+          <stop offset="1" stopColor="#b91c1c" />
+        </linearGradient>
+      </defs>
+
+      {/* The real pump photo, fit to the card's full width — this is what
+          replaced the hand-drawn silhouette. Ports/flanges are added
+          separately by PumpConnection in PumpWidget.jsx, which is tuned
+          (SIDE_ROOT_X/Y, BOTTOM_ROOT_Y) to pick up right where this image's
+          own base plate and body edge sit, so the drawn tube reads as a
+          continuation of the photo rather than a piece floating next to
+          it. */}
+      <image
+        href={pumpPhoto}
+        x="0"
+        y="0"
+        width={EQUIPMENT_W}
+        height={EQUIPMENT_H}
+        preserveAspectRatio="xMidYMid meet"
       />
-      <span
-        aria-hidden="true"
-        className="absolute right-2 top-5 h-2 w-2 rounded-full ring-2 ring-white/80"
-        style={{ backgroundColor: fault ? '#ef4444' : running ? '#22c55e' : '#94a3b8' }}
-      />
-    </div>
+
+      {/* A fault tints the whole equipment photo red instead of the old
+          hand-drawn body's own gradient swap — a photo can't recolor a
+          single shape, so this is a soft translucent wash over all of it,
+          same "something's wrong here" read at a glance. */}
+      {fault && <rect x="0" y="0" width={EQUIPMENT_W} height={EQUIPMENT_H} fill={`url(#${alarmId})`} opacity="0.4" />}
+
+      {/* Same discreet "equipment energized" indicator as before, now
+          placed over the motor's terminal box in the photo. */}
+      <circle cx="96" cy="11" r="3.5" fill={fault ? '#ef4444' : running ? '#22c55e' : '#94a3b8'} filter={running || fault ? `url(#${glowId})` : undefined} />
+    </svg>
   )
 }
 
