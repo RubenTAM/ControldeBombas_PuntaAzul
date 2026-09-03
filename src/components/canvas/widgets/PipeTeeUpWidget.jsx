@@ -27,13 +27,9 @@ import { WATER_COLOR, MetalStops } from './PipeStraightWidget'
 
 export default function PipeTeeUpWidget({ telemetry, rotation = 0, shadeFlip }) {
   const flowing = Boolean(telemetry?.flowAnimating)
-  // See PipeElbowWidget's note: a Te's rotation is forced by which three
-  // directions it needs to connect, never a free manual choice, so
-  // `shadeFlip` (computed by shadeSync.js from the actual connection
-  // graph) is what keeps its through-run and branch matching whatever is
-  // plugged into each, instead of a rotate-by-hand fix.
-  const hFlip = shadeFlip?.h ? 'rotate(180 36 36)' : undefined
-  const vFlip = shadeFlip?.v ? 'rotate(180 36 36)' : undefined
+  // Both gradients reverse together, keeping this fitting internally
+  // coherent while shadeSync matches it to the connected run.
+  const shadeFlipped = Boolean(shadeFlip?.flipped)
   const uid = useId()
   const hId = `teeUpH-${uid}`
   const vId = `teeUpV-${uid}`
@@ -45,12 +41,12 @@ export default function PipeTeeUpWidget({ telemetry, rotation = 0, shadeFlip }) 
     >
       <defs>
         {/* through run + its west/east flanges (y24..48, the flanges' own span) */}
-        <linearGradient id={hId} gradientUnits="userSpaceOnUse" x1="0" y1="28" x2="0" y2="44" gradientTransform={hFlip}>
-          <MetalStops />
+        <linearGradient id={hId} gradientUnits="userSpaceOnUse" x1="0" y1="28" x2="0" y2="44">
+          <MetalStops reversed={shadeFlipped} />
         </linearGradient>
         {/* branch + its root collar + north flange (x24..48, their own span) */}
-        <linearGradient id={vId} gradientUnits="userSpaceOnUse" x1="28" y1="0" x2="44" y2="0" gradientTransform={vFlip}>
-          <MetalStops />
+        <linearGradient id={vId} gradientUnits="userSpaceOnUse" x1="28" y1="0" x2="44" y2="0">
+          <MetalStops reversed={shadeFlipped} />
         </linearGradient>
       </defs>
 

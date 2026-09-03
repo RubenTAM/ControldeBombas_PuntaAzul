@@ -40,22 +40,10 @@ import { WATER_COLOR, MetalStops } from './PipeStraightWidget'
 
 export default function PipeElbowWidget({ telemetry, rotation = 0, shadeFlip }) {
   const flowing = Boolean(telemetry?.flowAnimating)
-  // rotation itself is left untouched — see PipeStraightWidget's note: the
-  // gradients below rotate rigidly with the whole widget box (a plain CSS
-  // transform applied by WidgetShell), same as physically turning the
-  // piece over would. But unlike a straight run, an elbow's rotation is
-  // never a free choice a person makes by hand — it's forced entirely by
-  // which two directions it needs to connect (the "+" menu / "Dibujar
-  // tubería" pick the one rotation that fits, and turning it further
-  // would swing a port away from whatever it's plugged into) — so there's
-  // no manual "rotate to fix the shading" available here the way there is
-  // for a straight piece. `shadeFlip` is DashboardCanvas's computed
-  // answer instead (see shadeSync.js): an extra 180° per stub, chosen so
-  // each one's highlight lands on the same side as whatever tube is
-  // actually connected there, recomputed automatically as the layout
-  // changes rather than something to fix by hand.
-  const vFlip = shadeFlip?.v ? 'rotate(180 36 36)' : undefined
-  const hFlip = shadeFlip?.h ? 'rotate(180 36 36)' : undefined
+  // shadeSync reverses the fitting as one indivisible surface. The vertical
+  // stub, curve and horizontal stub always change together, preserving both
+  // the external connections and the two internal tangent seams.
+  const shadeFlipped = Boolean(shadeFlip?.flipped)
   const uid = useId()
   const vId = `elbowV-${uid}`
   const hId = `elbowH-${uid}`
@@ -70,23 +58,36 @@ export default function PipeElbowWidget({ telemetry, rotation = 0, shadeFlip }) 
         {/* vertical stub + top flange (x24..48, the flange's own span) —
             reversed direction so it matches the ring's band sequence at
             their shared seam (y=12) */}
-        <linearGradient id={vId} gradientUnits="userSpaceOnUse" x1="44" y1="0" x2="28" y2="0" gradientTransform={vFlip}>
-          <MetalStops />
+        <linearGradient id={vId} gradientUnits="userSpaceOnUse" x1="44" y1="0" x2="28" y2="0">
+          <MetalStops reversed={shadeFlipped} />
         </linearGradient>
         {/* horizontal stub + right flange (y24..48, the flange's own span) */}
-        <linearGradient id={hId} gradientUnits="userSpaceOnUse" x1="0" y1="28" x2="0" y2="44" gradientTransform={hFlip}>
-          <MetalStops />
+        <linearGradient id={hId} gradientUnits="userSpaceOnUse" x1="0" y1="28" x2="0" y2="44">
+          <MetalStops reversed={shadeFlipped} />
         </linearGradient>
         {/* same stop sequence, remapped onto r=16..32 (offset 50%..100%)
             so the ring only carries banding across the tube's own
             thickness, centered on the bend's own arc center (60,12) */}
         <radialGradient id={ringId} gradientUnits="userSpaceOnUse" cx="60" cy="12" r="32">
-          <stop offset="50%" stopColor="#8b93a8" />
-          <stop offset="57%" stopColor="#f4f6fa" />
-          <stop offset="72%" stopColor="#aab2c2" />
-          <stop offset="80%" stopColor="#6c7488" />
-          <stop offset="92%" stopColor="#aab2c2" />
-          <stop offset="100%" stopColor="#7c8598" />
+          {shadeFlipped ? (
+            <>
+              <stop offset="50%" stopColor="#7c8598" />
+              <stop offset="57%" stopColor="#aab2c2" />
+              <stop offset="72%" stopColor="#6c7488" />
+              <stop offset="80%" stopColor="#aab2c2" />
+              <stop offset="92%" stopColor="#f4f6fa" />
+              <stop offset="100%" stopColor="#8b93a8" />
+            </>
+          ) : (
+            <>
+              <stop offset="50%" stopColor="#8b93a8" />
+              <stop offset="57%" stopColor="#f4f6fa" />
+              <stop offset="72%" stopColor="#aab2c2" />
+              <stop offset="80%" stopColor="#6c7488" />
+              <stop offset="92%" stopColor="#aab2c2" />
+              <stop offset="100%" stopColor="#7c8598" />
+            </>
+          )}
         </radialGradient>
       </defs>
 

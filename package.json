@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test": "node --test src/components/canvas/useTransformable.test.js src/components/canvas/sketchToPipes.test.js",
+    "test": "node --test src/components/canvas/useTransformable.test.js src/components/canvas/sketchToPipes.test.js src/components/canvas/shadeSync.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -278,12 +278,9 @@ export default function DashboardCanvas({ telemetry, canvas, broker }) {
     return map
   }, [ports])
 
-  // Per-widget shading correction for elbow/Te pieces (see shadeSync.js):
-  // whichever of their gradients needs an extra 180° so its highlight
-  // lands on the same side as whatever is actually plugged into that
-  // port, computed fresh from the CURRENT connection graph every time the
-  // layout changes — so it stays right as pieces are added, removed, or
-  // dragged around, not just at the moment something was first attached.
+  // One shading polarity per pipe piece (see shadeSync.js), recomputed from
+  // the current connection graph. Whole fittings reverse as a unit, so a
+  // corrected outer connection can never create a seam inside a curve.
   const shadeFlipByWidget = useMemo(() => computeShadeFlips(widgets), [widgets])
 
   // The layout may grow downward and scroll, but never sideways. Track

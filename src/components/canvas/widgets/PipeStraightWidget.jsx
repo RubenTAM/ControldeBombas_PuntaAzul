@@ -27,18 +27,22 @@ const FLANGE_RATIO = 6 / 24
 // Chrome-tube shading: highlight near the top, a shadow band past the
 // middle, a second highlight, dark at the bottom — reused, byte-for-byte
 // identical, by every pipe piece in the set.
-export const MetalStops = () => (
-  <>
-    <stop offset="0%" stopColor="#8b93a8" />
-    <stop offset="15%" stopColor="#f4f6fa" />
-    <stop offset="45%" stopColor="#aab2c2" />
-    <stop offset="60%" stopColor="#6c7488" />
-    <stop offset="85%" stopColor="#aab2c2" />
-    <stop offset="100%" stopColor="#7c8598" />
-  </>
-)
+const METAL_STOPS = [
+  ['0%', '#8b93a8'],
+  ['15%', '#f4f6fa'],
+  ['45%', '#aab2c2'],
+  ['60%', '#6c7488'],
+  ['85%', '#aab2c2'],
+  ['100%', '#7c8598'],
+]
 
-function Flange({ heightPx, widthPx, gradId }) {
+export const MetalStops = ({ reversed = false }) => {
+  const colors = METAL_STOPS.map(([, color]) => color)
+  if (reversed) colors.reverse()
+  return METAL_STOPS.map(([offset], index) => <stop key={offset} offset={offset} stopColor={colors[index]} />)
+}
+
+function Flange({ heightPx, widthPx, gradId, shadeFlipped }) {
   return (
     <svg viewBox="0 0 6 24" width={widthPx} height={heightPx} className="min-w-0 shrink-0 overflow-hidden">
       <defs>
@@ -50,7 +54,7 @@ function Flange({ heightPx, widthPx, gradId }) {
             showing above/below the water, instead of clamped-pad flat
             color spilling in from a 0..24 span that never gets there. */}
         <linearGradient id={gradId} gradientUnits="userSpaceOnUse" x1="0" y1="4" x2="0" y2="20">
-          <MetalStops />
+          <MetalStops reversed={shadeFlipped} />
         </linearGradient>
       </defs>
       <rect x="0" y="0" width="6" height="24" rx="1" fill={`url(#${gradId})`} />
@@ -60,18 +64,13 @@ function Flange({ heightPx, widthPx, gradId }) {
   )
 }
 
-export default function PipeStraightWidget({ width = 140, height = 24, portsOpen = [true, true], telemetry, rotation = 0 }) {
+export default function PipeStraightWidget({ width = 140, height = 24, portsOpen = [true, true], telemetry, shadeFlip }) {
   const [openStart, openEnd] = portsOpen
   const flowing = Boolean(telemetry?.flowAnimating)
-  // rotation isn't used to touch the gradient here (see registry note): the
-  // whole widget box — this SVG, gradient included — gets physically
-  // rotated by WidgetShell's own CSS transform, the same way flipping a
-  // real metal rod over moves its highlight to the other side. An earlier
-  // version counter-rotated the gradient to cancel that out, so every
-  // rotation of a piece looked identically lit — but that made the rotate
-  // handle look broken on this left-right-symmetric piece (turning it did
-  // nothing visible), when rotating by hand is exactly how you fix a
-  // shading mismatch against a neighboring piece.
+  const shadeFlipped = Boolean(shadeFlip?.flipped)
+  // The whole widget rotates in WidgetShell. shadeSync may reverse this
+  // complete stop sequence so a run assembled from either direction still
+  // presents the same colors at every connected seam.
   const uid = useId()
   const gradId = `pipeMetal-${uid}`
   const visibleFlanges = Number(openStart !== false) + Number(openEnd !== false)
@@ -82,7 +81,7 @@ export default function PipeStraightWidget({ width = 140, height = 24, portsOpen
       className="flex h-full w-full items-stretch overflow-hidden"
       style={{ filter: 'drop-shadow(0 1.5px 2px rgba(11,18,32,0.28))' }}
     >
-      {openStart !== false && <Flange heightPx={height} widthPx={flangeWidth} gradId={gradId} />}
+      {openStart !== false && <Flange heightPx={height} widthPx={flangeWidth} gradId={gradId} shadeFlipped={shadeFlipped} />}
 
       {/* tube: same 16-unit diameter / 24-tall viewBox as every other pipe
           piece, stretched horizontally only. Same gradient id + "0..24"
@@ -94,7 +93,7 @@ export default function PipeStraightWidget({ width = 140, height = 24, portsOpen
       >
         <defs>
           <linearGradient id={gradId} gradientUnits="userSpaceOnUse" x1="0" y1="4" x2="0" y2="20">
-            <MetalStops />
+          <MetalStops reversed={shadeFlipped} />
           </linearGradient>
         </defs>
         <rect x="0" y="4" width="100" height="16" fill={`url(#${gradId})`} />
@@ -118,7 +117,7 @@ export default function PipeStraightWidget({ width = 140, height = 24, portsOpen
         )}
       </svg>
 
-      {openEnd !== false && <Flange heightPx={height} widthPx={flangeWidth} gradId={gradId} />}
+      {openEnd !== false && <Flange heightPx={height} widthPx={flangeWidth} gradId={gradId} shadeFlipped={shadeFlipped} />}
     </div>
   )
 }
