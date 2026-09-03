@@ -335,6 +335,13 @@ export const IconPencil = ({ className }) => (
   </Svg>
 )
 
+export const IconLogout = ({ className }) => (
+  <Svg className={className}>
+    <path d="M10 5H5.5A1.5 1.5 0 0 0 4 6.5v11A1.5 1.5 0 0 0 5.5 19H10" />
+    <path d="M14.5 8.5 18 12l-3.5 3.5M9 12h9" />
+  </Svg>
+)
+
 export const IconGauge = ({ className }) => (
   <Svg className={className}>
     <path d="M4 16a8 8 0 0 1 16 0" />
