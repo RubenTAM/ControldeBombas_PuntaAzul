@@ -710,6 +710,7 @@ export default function DashboardCanvas({ telemetry, canvas, broker }) {
                 onConfigChange={(patch) => updateWidgetConfig(w.id, patch)}
                 width={w.w}
                 height={w.h}
+                rotation={w.rotation || 0}
                 portsOpen={portsOpenByWidget[w.id]}
                 connectedTypes={portsConnectedTypeByWidget[w.id]}
                 onQuickFill={w.type === 'panel' && !panelHasChildren(w) ? () => handleQuickFillPanel(w) : undefined}

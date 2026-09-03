@@ -38,8 +38,23 @@
 import { useId } from 'react'
 import { WATER_COLOR, MetalStops } from './PipeStraightWidget'
 
-export default function PipeElbowWidget({ telemetry }) {
+export default function PipeElbowWidget({ telemetry, rotation = 0 }) {
   const flowing = Boolean(telemetry?.flowAnimating)
+  // The metal gradients below are each authored once, for rotation 0.
+  // Chained on a canvas, two elbows commonly end up 180° apart from each
+  // other (e.g. mirrored corners of the same frame, as in the top-left vs
+  // top-right corner of a rectangular run) — and since rotating a shape by
+  // 180° also rotates (negates) the direction its own gradient is sampled
+  // in, an uncorrected pair reads as one lit "highlight up top" and the
+  // other "highlight down bottom": same piece, apparently different
+  // lighting, which is exactly what reads as a seam/gap at the joint even
+  // when the geometry itself lines up with 0px gap. Re-rotating the
+  // gradient by that same 180° (only ever needed at that one 180°-apart
+  // point — 90° apart is fine as-is, see PipeStraightWidget's longer note)
+  // cancels the flip back out so every elbow, whatever rotation got it
+  // into place, reads as lit from the same fixed direction.
+  const gradFlip = (((rotation % 360) + 360) % 360) >= 180
+  const flipTransform = gradFlip ? 'rotate(180 36 36)' : undefined
   const uid = useId()
   const vId = `elbowV-${uid}`
   const hId = `elbowH-${uid}`
@@ -54,11 +69,11 @@ export default function PipeElbowWidget({ telemetry }) {
         {/* vertical stub + top flange (x24..48, the flange's own span) —
             reversed direction so it matches the ring's band sequence at
             their shared seam (y=12) */}
-        <linearGradient id={vId} gradientUnits="userSpaceOnUse" x1="44" y1="0" x2="28" y2="0">
+        <linearGradient id={vId} gradientUnits="userSpaceOnUse" x1="44" y1="0" x2="28" y2="0" gradientTransform={flipTransform}>
           <MetalStops />
         </linearGradient>
         {/* horizontal stub + right flange (y24..48, the flange's own span) */}
-        <linearGradient id={hId} gradientUnits="userSpaceOnUse" x1="0" y1="28" x2="0" y2="44">
+        <linearGradient id={hId} gradientUnits="userSpaceOnUse" x1="0" y1="28" x2="0" y2="44" gradientTransform={flipTransform}>
           <MetalStops />
         </linearGradient>
         {/* same stop sequence, remapped onto r=16..32 (offset 50%..100%)

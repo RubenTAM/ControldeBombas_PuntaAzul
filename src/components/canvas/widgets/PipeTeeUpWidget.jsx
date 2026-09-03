@@ -25,8 +25,16 @@
 import { useId } from 'react'
 import { WATER_COLOR, MetalStops } from './PipeStraightWidget'
 
-export default function PipeTeeUpWidget({ telemetry }) {
+export default function PipeTeeUpWidget({ telemetry, rotation = 0 }) {
   const flowing = Boolean(telemetry?.flowAnimating)
+  // See PipeElbowWidget/PipeStraightWidget for the full explanation: each
+  // gradient below is authored once, for rotation 0, and needs re-applying
+  // that same 180° at the one point (total rotation ≥180°) where rotating
+  // the piece would otherwise also flip which side of the tube its
+  // gradient samples as "lit" — the pivot is this piece's own center
+  // (36,36), same as the elbow's.
+  const gradFlip = (((rotation % 360) + 360) % 360) >= 180
+  const flipTransform = gradFlip ? 'rotate(180 36 36)' : undefined
   const uid = useId()
   const hId = `teeUpH-${uid}`
   const vId = `teeUpV-${uid}`
@@ -38,11 +46,11 @@ export default function PipeTeeUpWidget({ telemetry }) {
     >
       <defs>
         {/* through run + its west/east flanges (y24..48, the flanges' own span) */}
-        <linearGradient id={hId} gradientUnits="userSpaceOnUse" x1="0" y1="28" x2="0" y2="44">
+        <linearGradient id={hId} gradientUnits="userSpaceOnUse" x1="0" y1="28" x2="0" y2="44" gradientTransform={flipTransform}>
           <MetalStops />
         </linearGradient>
         {/* branch + its root collar + north flange (x24..48, their own span) */}
-        <linearGradient id={vId} gradientUnits="userSpaceOnUse" x1="28" y1="0" x2="44" y2="0">
+        <linearGradient id={vId} gradientUnits="userSpaceOnUse" x1="28" y1="0" x2="44" y2="0" gradientTransform={flipTransform}>
           <MetalStops />
         </linearGradient>
       </defs>
