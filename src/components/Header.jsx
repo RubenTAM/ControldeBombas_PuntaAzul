@@ -1,6 +1,6 @@
 import { IconBell, IconMenu } from '../icons.jsx'
 
-export default function Header({ alarmCount, onMenu }) {
+export default function Header({ alarmCount, onMenu, user, onLogout }) {
   return (
     <header className="flex shrink-0 items-center justify-between gap-4 border-b border-ink-100 bg-white/80 px-5 py-4 backdrop-blur lg:px-8">
       <div className="flex items-center gap-3">
@@ -19,9 +19,9 @@ export default function Header({ alarmCount, onMenu }) {
           )}
         </button>
 
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-navy-600 text-xs font-bold text-white">
-          RL
-        </div>
+        <button onClick={onLogout} title={`${user?.username || 'Usuario'} · Cerrar sesión`} className="flex h-9 w-9 items-center justify-center rounded-full bg-navy-600 text-xs font-bold uppercase text-white">
+          {(user?.username || 'U').slice(0, 2)}
+        </button>
       </div>
     </header>
   )

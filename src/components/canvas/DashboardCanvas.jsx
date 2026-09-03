@@ -7,6 +7,12 @@ import { sketchToPieces, simplify, orthogonalize, findAlignmentGuide } from './s
 import { IconLayoutBoard, IconPipeStraight, IconPipeElbow, IconPipeTee, IconPipeTeeUp, IconPump } from '../../icons.jsx'
 
 const GRID = 20
+// The dashboard is authored in a stable world coordinate system. The browser
+// viewport may become narrower, but that must NEVER rewrite widget positions:
+// a small window simply scrolls over this fixed-width surface. Previously the
+// current clientWidth was fed back into constrainToLayout on every ResizeObserver
+// event, permanently clamping every widget toward x=0 and persisting the damage.
+const MIN_CANVAS_WIDTH = 1600
 // A widget placed right at the canvas edge (x/y near 0) has its floating
 // edit controls (grip, remove-X, rotate) sitting on small NEGATIVE offsets
 // outside its own box (see WidgetShell's bare mode) — with no buffer, that
@@ -136,7 +142,7 @@ export default function DashboardCanvas({ telemetry, canvas, broker }) {
     setGuideLine,
   } = canvas
   const canvasRef = useRef(null)
-  const [layoutWidth, setLayoutWidth] = useState(0)
+  const [layoutWidth, setLayoutWidth] = useState(MIN_CANVAS_WIDTH)
   const [openPicker, setOpenPicker] = useState(null) // { widgetId, portIndex, port }
   const [configuringId, setConfiguringId] = useState(null)
   const isDrawingRef = useRef(null)
@@ -149,7 +155,9 @@ export default function DashboardCanvas({ telemetry, canvas, broker }) {
   useEffect(() => {
     const el = canvasRef.current
     if (!el) return undefined
-    const measure = () => setLayoutWidth(el.clientWidth)
+    // Grow the authored surface for a larger monitor, but never shrink it when
+    // the browser/window becomes smaller. Shrinking is a viewport concern.
+    const measure = () => setLayoutWidth((current) => Math.max(current, el.clientWidth, MIN_CANVAS_WIDTH))
     measure()
     const observer = new ResizeObserver(measure)
     observer.observe(el)
@@ -210,25 +218,6 @@ export default function DashboardCanvas({ telemetry, canvas, broker }) {
     next.y = Math.max(isLayoutWidget ? Math.ceil(minY / GRID) * GRID : minY, next.y)
     return next
   }
-
-  // Recover layouts already persisted with negative/off-screen positions,
-  // and re-fit them if the sidebar/window later makes the canvas narrower.
-  useEffect(() => {
-    if (!layoutWidth) return
-    widgets.forEach((widget) => {
-      const bounded = constrainToLayout(widget)
-      if (
-        Math.abs(bounded.x - widget.x) > 0.01 ||
-        Math.abs(bounded.y - widget.y) > 0.01 ||
-        Math.abs(bounded.w - widget.w) > 0.01 ||
-        Math.abs(bounded.h - widget.h) > 0.01
-      ) {
-        updateTransform(widget.id, { x: bounded.x, y: bounded.y, w: bounded.w, h: bounded.h })
-      }
-    })
-    // constrainToLayout intentionally reads the current registry and width.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layoutWidth, widgets, updateTransform])
 
   // every port on every placed widget, in canvas coordinates, plus
   // whether another widget's port already sits right on top of it (=
@@ -293,6 +282,19 @@ export default function DashboardCanvas({ telemetry, canvas, broker }) {
     })
     return maxY
   }, [widgets])
+
+  const contentWidth = useMemo(() => {
+    let maxX = MIN_CANVAS_WIDTH - CANVAS_PAD
+    widgets.forEach((w) => {
+      const angle = (((w.rotation || 0) % 360) * Math.PI) / 180
+      const visualW = w.w * Math.abs(Math.cos(angle)) + w.h * Math.abs(Math.sin(angle))
+      const offsetX = (w.w - visualW) / 2
+      maxX = Math.max(maxX, w.x - offsetX + visualW + CANVAS_PAD)
+    })
+    return Math.ceil(maxX)
+  }, [widgets])
+
+  const surfaceWidth = Math.max(MIN_CANVAS_WIDTH, layoutWidth, contentWidth)
 
   // While dragging a widget (a plain x/y move, not a resize or rotate),
   // check every one of ITS OWN ports against every OTHER widget's still-
@@ -622,26 +624,20 @@ export default function DashboardCanvas({ telemetry, canvas, broker }) {
       onDragOver={editMode ? (e) => e.preventDefault() : undefined}
       onDrop={editMode ? handleDrop : undefined}
       onPointerDown={() => setOpenPicker(null)}
-      className={[
-        'relative min-h-0 flex-1 rounded-2xl bg-navy-50',
-        editMode ? 'overflow-auto' : 'overflow-hidden',
-      ].join(' ')}
+      className="relative min-h-0 flex-1 overflow-auto rounded-2xl bg-navy-50"
     >
       {/* The surface grows downward so long dashboards remain scrollable,
           while its width stays locked to the visible layout. */}
       <div
-        className={editMode ? 'relative' : 'absolute inset-0'}
-        style={
-          editMode
-            ? {
-                padding: CANVAS_PAD,
-                width: '100%',
-                height: `max(100%, ${contentHeight + CANVAS_PAD * 2}px)`,
-                backgroundImage: 'radial-gradient(circle, #c7ccdb 1px, transparent 1px)',
-                backgroundSize: `${GRID}px ${GRID}px`,
-              }
-            : { padding: CANVAS_PAD }
-        }
+        className="relative"
+        style={{
+          padding: CANVAS_PAD,
+          width: surfaceWidth,
+          minHeight: '100%',
+          height: `max(100%, ${contentHeight + CANVAS_PAD * 2}px)`,
+          backgroundImage: editMode ? 'radial-gradient(circle, #c7ccdb 1px, transparent 1px)' : undefined,
+          backgroundSize: editMode ? `${GRID}px ${GRID}px` : undefined,
+        }}
       >
         {widgets.length === 0 && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm text-ink-300">

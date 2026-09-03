@@ -72,8 +72,9 @@ export function useBrokerConnections() {
   }, [])
 
   const removeConnection = useCallback((id) => {
+    if (activeConnection?.id === id) disconnect()
     setConnections((current) => current.filter((connection) => connection.id !== id))
-  }, [])
+  }, [activeConnection?.id, disconnect])
 
   const connect = useCallback(async (config) => {
     const attempt = ++attemptRef.current

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { WIDGET_REGISTRY } from '../components/canvas/registry.js'
 import { getPortWorld, placeAttached, CONNECT_THRESHOLD } from '../components/canvas/ports.js'
 import { lengthAlongDir, ALIGN_SNAP } from '../components/canvas/sketchToPipes.js'
+import { apiRequest } from '../lib/api.js'
 
 // Persists the operator's canvas layout in the browser so it survives a
 // refresh. This is a per-browser convenience for now — once there's a
@@ -28,9 +29,14 @@ function loadInitial() {
 let uid = 1
 const nextId = () => `w-${Date.now()}-${uid++}`
 
-export function useCanvas() {
+export function useCanvas(authToken = '', canEdit = false) {
   const [widgets, setWidgets] = useState(loadInitial)
   const [editMode, setEditMode] = useState(false)
+  const [syncStatus, setSyncStatus] = useState(authToken ? 'loading' : 'local')
+  const syncReadyRef = useRef(false)
+  const widgetsRef = useRef(widgets)
+  const lastRemoteUpdateRef = useRef(null)
+  const lastRemoteWidgetsRef = useRef(null)
 
   // "Dibujar tubería" free-hand sketch tool — lives here (rather than in
   // DashboardCanvas, where the actual mouse-capture/geometry math still
@@ -49,12 +55,92 @@ export function useCanvas() {
   const [guideLine, setGuideLine] = useState(null)
 
   useEffect(() => {
+    widgetsRef.current = widgets
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(widgets))
     } catch (err) {
       // not critical if persistence fails (e.g. private browsing)
     }
   }, [widgets])
+
+  // The browser copy is retained as a migration/offline fallback, but the
+  // server is authoritative once a user signs in. On the first authenticated
+  // load, an existing local layout seeds an empty server so the dashboard the
+  // operator already built is not lost when shared persistence is enabled.
+  useEffect(() => {
+    syncReadyRef.current = false
+    if (!authToken) {
+      setSyncStatus('local')
+      return
+    }
+    let cancelled = false
+    setSyncStatus('loading')
+    apiRequest('/api/dashboard', { token: authToken })
+      .then(async (data) => {
+        if (cancelled) return
+        const remote = Array.isArray(data.widgets) ? data.widgets : []
+        lastRemoteUpdateRef.current = data.updated_at || data.updatedAt || null
+        lastRemoteWidgetsRef.current = JSON.stringify(remote)
+        const hasRemoteState = Boolean(data.updated_at || data.updatedAt)
+        if (hasRemoteState) {
+          setWidgets(remote)
+        } else if (widgetsRef.current.length && canEdit) {
+          const saved = await apiRequest('/api/dashboard', {
+            method: 'PUT',
+            token: authToken,
+            body: JSON.stringify({ widgets: widgetsRef.current }),
+          })
+          lastRemoteUpdateRef.current = saved.updatedAt
+          lastRemoteWidgetsRef.current = JSON.stringify(widgetsRef.current)
+        } else {
+          setWidgets(remote)
+        }
+        if (!cancelled) {
+          syncReadyRef.current = true
+          setSyncStatus('synced')
+        }
+      })
+      .catch(() => !cancelled && setSyncStatus('error'))
+    return () => { cancelled = true }
+  }, [authToken, canEdit])
+
+  useEffect(() => {
+    if (!authToken || !canEdit || !syncReadyRef.current) return undefined
+    const serialized = JSON.stringify(widgets)
+    if (serialized === lastRemoteWidgetsRef.current) return undefined
+    setSyncStatus('saving')
+    const timeout = window.setTimeout(() => {
+      apiRequest('/api/dashboard', {
+        method: 'PUT',
+        token: authToken,
+        body: JSON.stringify({ widgets }),
+      }).then((data) => {
+        lastRemoteWidgetsRef.current = serialized
+        lastRemoteUpdateRef.current = data.updatedAt
+        setSyncStatus('synced')
+      }).catch(() => setSyncStatus('error'))
+    }, 600)
+    return () => window.clearTimeout(timeout)
+  }, [widgets, authToken, canEdit])
+
+  // A second computer receives dashboard edits without a reload. Polling is
+  // paused while this browser is actively editing so two administrators do
+  // not pull the canvas underneath one another mid-drag.
+  useEffect(() => {
+    if (!authToken || editMode || !syncReadyRef.current) return undefined
+    const refresh = () => apiRequest('/api/dashboard', { token: authToken })
+      .then((data) => {
+        if (!data.updated_at || data.updated_at === lastRemoteUpdateRef.current) return
+        const remote = Array.isArray(data.widgets) ? data.widgets : []
+        const serialized = JSON.stringify(remote)
+        lastRemoteUpdateRef.current = data.updated_at
+        lastRemoteWidgetsRef.current = serialized
+        if (serialized !== JSON.stringify(widgetsRef.current)) setWidgets(remote)
+      })
+      .catch(() => setSyncStatus('error'))
+    const interval = window.setInterval(refresh, 2500)
+    return () => window.clearInterval(interval)
+  }, [authToken, editMode])
 
   // places a new widget instance with its top-left corner at (x, y); an
   // optional rotation is used by the pipe-chain "+" builder so a new piece
@@ -318,6 +404,7 @@ export function useCanvas() {
     guideLine,
     setGuideLine,
     acceptSketch,
+    syncStatus,
     cancelSketch,
   }
 }

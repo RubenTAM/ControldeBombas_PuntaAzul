@@ -14,6 +14,14 @@ npm run dev
 
 Abre lo que indique la terminal (normalmente http://localhost:5173).
 
+El frontend usa `/api` en el mismo dominio. En desarrollo, Vite lo envía a
+`http://127.0.0.1:8080`. El servidor requiere `DATABASE_URL`; al arrancar crea
+las tablas necesarias y, si aún no existe, el usuario inicial `admin`.
+
+El lienzo se guarda en PostgreSQL y se comparte entre sesiones y equipos. La
+copia anterior de `localStorage` se migra automáticamente la primera vez que
+el administrador inicia sesión contra una base vacía.
+
 ## Estructura
 
 - `src/hooks/useTelemetry.js` — motor de simulación (nivel, bombas, alarmas,

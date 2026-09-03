@@ -1,4 +1,5 @@
 import { IconBroker, IconGrid, IconSettings, IconUsers, IconX } from '../icons.jsx'
+import puntaAzulLogo from '../assets/puntaazul-logo.png'
 
 const NAV = [
   { key: 'dashboard', label: 'Dashboard', icon: IconGrid },
@@ -10,7 +11,7 @@ const FOOT = [
   { key: 'usuarios', label: 'Usuarios', icon: IconUsers },
 ]
 
-export default function Sidebar({ active, onNavigate, alarmCount, open = false, onClose }) {
+export default function Sidebar({ active, onNavigate, alarmCount, open = false, onClose, user }) {
   const navigate = (key) => {
     onNavigate(key)
     onClose?.()
@@ -25,21 +26,19 @@ export default function Sidebar({ active, onNavigate, alarmCount, open = false, 
           open ? 'flex translate-x-0' : 'hidden -translate-x-full',
         ].join(' ')}
       >
-        <div className="flex items-center gap-3 px-6 py-6">
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-live-500/15 ring-1 ring-live-400/40">
-            <IconDroplet />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="font-sans text-[15px] font-bold tracking-tight text-white">PuntaAzul</p>
-            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-navy-300">Control de bombeo</p>
-          </div>
+        <div className="flex min-h-[92px] items-center gap-3 px-5 py-4">
+          <img
+            src={puntaAzulLogo}
+            alt="Punta Azul Residencial & Fitness"
+            className="h-auto min-w-0 flex-1 object-contain brightness-0 invert drop-shadow-[0_2px_8px_rgba(255,255,255,0.08)]"
+          />
           <button type="button" onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-lg text-navy-300 hover:bg-white/10 hover:text-white lg:hidden" aria-label="Cerrar menú">
             <IconX className="h-5 w-5" />
           </button>
         </div>
 
         <nav className="mt-2 flex-1 space-y-1 px-3">
-          {NAV.map((item) => (
+          {NAV.filter((item) => user?.role === 'admin' || item.key === 'dashboard').map((item) => (
             <NavItem
               key={item.key}
               item={item}
@@ -54,7 +53,7 @@ export default function Sidebar({ active, onNavigate, alarmCount, open = false, 
           <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-navy-400">
             Administración
           </p>
-          {FOOT.map((item) => (
+          {FOOT.filter((item) => user?.role === 'admin').map((item) => (
             <NavItem key={item.key} item={item} active={active === item.key} onClick={() => navigate(item.key)} />
           ))}
         </div>
@@ -89,13 +88,5 @@ function NavItem({ item, active, badge, onClick }) {
         </span>
       )}
     </button>
-  )
-}
-
-function IconDroplet() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 text-live-300" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 3.5s6.2 6.9 6.2 11.3a6.2 6.2 0 1 1-12.4 0C5.8 10.4 12 3.5 12 3.5Z" />
-    </svg>
   )
 }
