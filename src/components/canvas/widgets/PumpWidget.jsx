@@ -20,26 +20,32 @@ const DEFAULT_HEIGHT = 212
 // own coordinate space and the runs stretch from there to the widget ports.
 // SIDE_ROOT_X/SIDE_ROOT_Y/BOTTOM_ROOT_Y are tuned by eye to where the pump
 // PHOTO's own body/base plate actually sit in PumpCard.jsx's equipment
-// art (measured directly off that image) — not to the actual logical
-// ports (registry.js's fixed fx/fy fractions, untouched here), which stay
-// exactly where every already-placed pump and its connected pipes expect
-// them. These roots only decide how much of the connecting tube is drawn
-// between the photo and that fixed port, so the pipe reads as growing out
-// of the pump body instead of floating next to it.
+// art (measured directly off that image). BOTTOM_ROOT_Y only decides how
+// much connecting tube is drawn between the photo and the bottom port —
+// that port itself (registry.js's fy: 1, always the widget's own bottom
+// edge) is untouched. The side port is different: its fy is NOT fixed
+// independent of this file — SIDE_PORT_FRACTION below and registry.js's
+// port 1 fy are the same number kept in sync by hand, so moving the
+// discharge means editing both, and only makes sense if nothing is
+// already connected there (see registry.js's port 1 comment).
 const CARD_WIDTH = 142
 const CARD_HEIGHT = 182
-const SIDE_ROOT_X = 106
-const SIDE_ROOT_Y = 144
+const SIDE_ROOT_X = 136
+const SIDE_ROOT_Y = 120
 const BOTTOM_ROOT_Y = 167
 
-// The discharge leaves the pump volute, not the middle of the information
-// card. At the default 212px widget height this lands 38px below the old
-// center port and exactly on the outlet drawn inside PumpCard.
-const SIDE_PORT_FRACTION = 144 / DEFAULT_HEIGHT
+// Lines up with the pump photo's own shaft/body centerline (measured
+// directly off the image, ~41% down it). This and registry.js's port 1
+// fy MUST stay equal.
+const SIDE_PORT_FRACTION = 120 / DEFAULT_HEIGHT
 
 // One continuous pipe from the pump body to the exterior flange. The
 // horizontal and vertical variants share exactly the same 16px tube,
-// 8px water core, 24x6 flange and bolt offsets; only the axis changes.
+// 8px water core, 24x6 flange and bolt offsets as every other pipe
+// piece in this app (PipeStraightWidget's own Flange, PipeElbowWidget,
+// PipeTeeWidget) — deliberately the identical shape, not a look-alike,
+// so a pump's connection reads as the same fitting as the rest of the
+// network instead of its own one-off design.
 function PumpConnection({ orientation, length, scale }) {
   const uid = useId()
   const gradId = `pumpConnection-${uid}`

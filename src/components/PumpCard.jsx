@@ -1,13 +1,15 @@
 import { useId } from 'react'
 import { IconAlertTriangle } from '../icons.jsx'
-import pumpPhoto from '../assets/pump-photo.jpg'
+import pumpPhoto from '../assets/pump-photo.png'
 
 // Equipment art dimensions: the photo itself, fit to the card's own 142px
 // width (never cropped/overflowed — CARD_WIDTH in PumpWidget.jsx is what
 // this has to match) at its native aspect ratio, so nothing is stretched
-// or sliced off. 104.5 = 142 * (photo's own height/width ratio).
+// or sliced off. 104.2 = 142 * (photo's own height/width ratio). PNG (not
+// JPEG) because this version has a real alpha-cut background — no more
+// white box around the pump's silhouette, it just sits on the card.
 const EQUIPMENT_W = 142
-const EQUIPMENT_H = 104.5
+const EQUIPMENT_H = 104.2
 
 function PumpEquipment({ running, fault }) {
   const uid = useId().replace(/:/g, '')
@@ -17,7 +19,7 @@ function PumpEquipment({ running, fault }) {
   return (
     <svg
       viewBox={`0 0 ${EQUIPMENT_W} ${EQUIPMENT_H}`}
-      className="h-[104.5px] w-[142px] overflow-visible"
+      className="h-[104.2px] w-[142px] overflow-visible"
       role="img"
       aria-label="Bomba centrífuga horizontal"
     >
