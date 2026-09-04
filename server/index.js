@@ -14,6 +14,10 @@ const { Pool } = pg
 const PORT = process.env.PORT || 8080
 const DATABASE_URL = process.env.DATABASE_URL
 const SESSION_DAYS = 30
+const SCHEMA_RETRY_MS = 5000
+
+let databaseReady = false
+let databaseError = null
 
 if (!DATABASE_URL) {
   console.warn('[puntaazul-api] DATABASE_URL is not set — did you bind the database component in App Platform?')
@@ -144,15 +148,30 @@ function adminOnly(req, res, next) {
   next()
 }
 
-// App Platform's readiness/liveness checks hit "/" by default.
-app.get('/', (_req, res) => res.json({ service: 'puntaazul-api', status: 'ok' }))
+// The process must answer platform health checks even while PostgreSQL is
+// starting. Previously app.listen() ran only after ensureSchema(), so one
+// transient database delay left the container with no open port and caused
+// an automatic rollback of otherwise-valid frontend deployments.
+app.get('/', (_req, res) =>
+  res.json({
+    service: 'puntaazul-api',
+    status: 'ok',
+    database: databaseReady ? 'ready' : 'initializing',
+  }),
+)
 
 app.get('/api/health', async (_req, res) => {
   try {
     await pool.query('SELECT 1')
+    databaseReady = true
+    databaseError = null
     res.json({ status: 'ok', db: 'connected' })
   } catch (err) {
-    res.status(500).json({ status: 'error', message: err.message })
+    databaseReady = false
+    databaseError = err.message
+    // This endpoint is also safe as a platform liveness check: the HTTP
+    // service is alive and keeps retrying its dependency in the background.
+    res.json({ status: 'degraded', db: 'reconnecting' })
   }
 })
 
@@ -287,11 +306,32 @@ app.post('/api/historicos', async (req, res) => {
   }
 })
 
-ensureSchema()
-  .then(() => {
-    app.listen(PORT, () => console.log(`[puntaazul-api] escuchando en :${PORT}`))
-  })
-  .catch((err) => {
-    console.error('[puntaazul-api] no se pudo preparar la base de datos:', err.message)
-    process.exit(1)
-  })
+async function prepareDatabase() {
+  try {
+    await ensureSchema()
+    databaseReady = true
+    databaseError = null
+    console.log('[puntaazul-api] base de datos lista')
+  } catch (err) {
+    databaseReady = false
+    // Avoid repeating the same message every five seconds while still
+    // reporting a changed failure reason when it is useful operationally.
+    if (databaseError !== err.message) {
+      console.error('[puntaazul-api] base de datos no disponible; reintentando:', err.message)
+      databaseError = err.message
+    }
+    setTimeout(prepareDatabase, SCHEMA_RETRY_MS)
+  }
+}
+
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`[puntaazul-api] escuchando en :${PORT}`)
+  prepareDatabase()
+})
+
+function shutdown() {
+  server.close(() => pool.end().finally(() => process.exit(0)))
+}
+
+process.on('SIGTERM', shutdown)
+process.on('SIGINT', shutdown)
