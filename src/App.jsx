@@ -26,8 +26,8 @@ function fixedDashboardWidgets(widgets) {
   return widgets.map((widget) => {
     const assigned = assignments.get(widget.id)
     let next = assigned ? { ...widget, ...assigned, config: { ...widget.config, ...assigned.config } } : widget
-    if (widget.id === tankByKey.carcamo?.id) next = { ...next, config: { ...next.config, tankKey: 'carcamo', label: 'Tanque Cárcamo' } }
-    if (widget.id === tankByKey.superior?.id) next = { ...next, config: { ...next.config, tankKey: 'superior', label: 'Tanque Superior' } }
+    if (widget.id === tankByKey.carcamo?.id) next = { ...next, config: { ...next.config, tankKey: 'carcamo', label: 'Tanque Cárcamo', readTag: 'PACarcamo_Real_5' } }
+    if (widget.id === tankByKey.superior?.id) next = { ...next, config: { ...next.config, tankKey: 'superior', label: 'Tanque Superior', readTag: 'PATanque_Real_1' } }
     if (widget.type === 'pump') {
       const pumpId = widget.config?.pumpId === 'p2' ? 'p2' : 'p1'
       const offset = pumpId === 'p1' ? 0 : 5
