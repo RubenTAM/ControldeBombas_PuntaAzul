@@ -21,7 +21,7 @@ const LEVEL_TOPICS = {
   PATanque_Real_1: 'tanque-superior',
   PACarcamo_Real_5: 'tanque-carcamo',
 }
-const LEVEL_SAMPLE_MS = 60_000
+const LEVEL_SAMPLE_MS = 10 * 60_000
 const lastLevelSave = {}
 
 // The broker is deliberately fixed. Browsers cannot connect to MQTT/TCP on
@@ -81,7 +81,10 @@ mqttClient.on('message', (topic, payload) => {
 
   const zona = LEVEL_TOPICS[topic]
   const numeric = Number(value)
-  if (zona && databaseReady && Number.isFinite(numeric) && numeric >= 0 && numeric <= 100 && receivedAt - (lastLevelSave[topic] || 0) >= LEVEL_SAMPLE_MS) {
+  // Save the first valid value immediately. The periodic sampler below then
+  // records the latest known level every ten minutes, even if it did not
+  // change and the PLC has not published another message in that interval.
+  if (zona && databaseReady && !lastLevelSave[topic] && Number.isFinite(numeric) && numeric >= 0 && numeric <= 100) {
     lastLevelSave[topic] = receivedAt
     void recordReading({ zona, nivel_pct: numeric }).catch((error) => {
       lastLevelSave[topic] = 0
@@ -187,6 +190,16 @@ async function recordReading({ zona = 'cabo-viejo', nivel_pct, volumen_m3 }) {
     [zona, nivel_pct, volumen_m3 ?? null],
   )
   return rows[0]
+}
+
+async function saveLatestLevels() {
+  if (!databaseReady) return
+  await Promise.all(Object.entries(LEVEL_TOPICS).map(async ([topic, zona]) => {
+    const numeric = Number(mqttState.values[topic]?.value)
+    if (!Number.isFinite(numeric) || numeric < 0 || numeric > 100) return
+    await recordReading({ zona, nivel_pct: numeric })
+    lastLevelSave[topic] = Date.now()
+  }))
 }
 
 const RANGE_TO_INTERVAL = {
@@ -407,12 +420,7 @@ async function prepareDatabase() {
     await ensureSchema()
     databaseReady = true
     databaseError = null
-    await Promise.all(Object.entries(LEVEL_TOPICS).map(async ([topic, zona]) => {
-      const numeric = Number(mqttState.values[topic]?.value)
-      if (!Number.isFinite(numeric) || numeric < 0 || numeric > 100) return
-      await recordReading({ zona, nivel_pct: numeric })
-      lastLevelSave[topic] = Date.now()
-    }))
+    await saveLatestLevels()
     console.log('[puntaazul-api] base de datos lista')
   } catch (err) {
     databaseReady = false
@@ -431,7 +439,14 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   prepareDatabase()
 })
 
+const levelSampleTimer = setInterval(() => {
+  void saveLatestLevels().catch((error) => {
+    console.error('[puntaazul-api] no se pudieron guardar las muestras de nivel:', error.message)
+  })
+}, LEVEL_SAMPLE_MS)
+
 function shutdown() {
+  clearInterval(levelSampleTimer)
   mqttClient.end(true)
   server.close(() => pool.end().finally(() => process.exit(0)))
 }

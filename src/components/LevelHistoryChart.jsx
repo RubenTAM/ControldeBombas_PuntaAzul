@@ -35,22 +35,21 @@ export default function LevelHistoryChart({ telemetry, config, editMode, onConfi
   }, [range, history, now])
 
   const chart = useMemo(() => {
-    if (data.length < 2) {
-      const span = range === '6h' ? 6 * 3_600_000 : range === '24h' ? 24 * 3_600_000 : 7 * 24 * 3_600_000
-      return { linePath: '', areaPath: '', points: [], minT: now - span, maxT: now }
-    }
-    const minT = data[0].t
-    const maxT = data[data.length - 1].t
+    const span = range === '6h' ? 6 * 3_600_000 : range === '24h' ? 24 * 3_600_000 : 7 * 24 * 3_600_000
+    const maxT = Math.max(now, Date.now())
+    const minT = maxT - span
+    if (!data.length) return { linePath: '', areaPath: '', points: [], minT, maxT }
     const xFor = (t) => PAD_L + ((t - minT) / (maxT - minT || 1)) * PLOT_W
     const yFor = (value) => PAD_T + (1 - value / 100) * PLOT_H
-    const points = data.map((d) => ({ ...d, x: xFor(d.t), y: yFor(d.level) }))
+    const points = data.map((d) => ({ ...d, x: Math.min(VB_W - PAD_R, Math.max(PAD_L, xFor(d.t))), y: yFor(d.level) }))
     const linePath = points.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
-    const areaPath = `${linePath} L${points.at(-1).x.toFixed(1)},${PAD_T + PLOT_H} L${points[0].x.toFixed(1)},${PAD_T + PLOT_H} Z`
+    const areaPath = points.length > 1 ? `${linePath} L${points.at(-1).x.toFixed(1)},${PAD_T + PLOT_H} L${points[0].x.toFixed(1)},${PAD_T + PLOT_H} Z` : ''
     return { linePath, areaPath, points, minT, maxT }
   }, [data, now, range])
 
   const yFor = (value) => PAD_T + (1 - value / 100) * PLOT_H
   const hover = hoverIdx !== null ? chart.points[hoverIdx] : null
+  const latest = chart.points.at(-1)
   const fmtTime = (t, axis = false) => new Date(t).toLocaleString('es-MX', {
     day: range === '7d' ? '2-digit' : undefined,
     month: range === '7d' ? 'short' : undefined,
@@ -164,7 +163,26 @@ export default function LevelHistoryChart({ telemetry, config, editMode, onConfi
           <line x1={PAD_L} x2={VB_W - PAD_R} y1={yFor(thresholds.stop)} y2={yFor(thresholds.stop)} stroke="#0891a8" strokeDasharray="5 4" strokeWidth="1.3" />
           <line x1={PAD_L} x2={VB_W - PAD_R} y1={yFor(thresholds.start)} y2={yFor(thresholds.start)} stroke="#324879" strokeDasharray="5 4" strokeWidth="1.3" />
           {chart.areaPath && <path d={chart.areaPath} fill={`url(#${fillId})`} />}
-          {chart.linePath && <path d={chart.linePath} fill="none" stroke={`url(#${strokeId})`} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />}
+          {chart.points.length > 1 && <path d={chart.linePath} fill="none" stroke={`url(#${strokeId})`} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />}
+
+          {chart.points.map((point, index) => (
+            <circle
+              key={`${point.t}-${index}`}
+              cx={point.x}
+              cy={point.y}
+              r={index === chart.points.length - 1 ? 5 : 3.5}
+              fill="#fff"
+              stroke={index === chart.points.length - 1 ? '#0b9fba' : '#2a78d6'}
+              strokeWidth={index === chart.points.length - 1 ? 3 : 2}
+            />
+          ))}
+
+          {latest && !hover && (
+            <g>
+              <rect x={Math.max(PAD_L, latest.x - 51)} y={Math.max(PAD_T + 3, latest.y - 31)} width="48" height="22" rx="8" fill="#102653" />
+              <text x={Math.max(PAD_L, latest.x - 27)} y={Math.max(PAD_T + 18, latest.y - 16)} textAnchor="middle" fill="#fff" className="font-mono text-[11px] font-bold">{latest.level.toFixed(1)}%</text>
+            </g>
+          )}
 
           {hover && (
             <g>
@@ -186,7 +204,7 @@ export default function LevelHistoryChart({ telemetry, config, editMode, onConfi
         <Legend color="#0fb3cc" label="Nivel del tanque" />
         <Legend color="#324879" label={`Arranque ${thresholds.start}%`} dashed />
         <Legend color="#0891a8" label={`Paro ${thresholds.stop}%`} dashed />
-        <span className="ml-auto">Actualización en tiempo real</span>
+        <span className="ml-auto">Muestra histórica cada 10 min · actualización en tiempo real</span>
       </div>
     </section>
   )
