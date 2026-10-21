@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 
 const CONFIRMATION_TIMEOUT_MS = 20_000
+const CONFIRMATION_VISIBLE_MS = 5_000
 
 const SETPOINT_META = {
-  start: { hint: 'Bombas en AUTO arrancan al llegar aquí', min: 5, max: 70 },
-  stop: { hint: 'Bombas en AUTO se detienen al llegar aquí', min: 30, max: 98 },
+  start: { hint: 'Bombas en AUTO arrancan al llegar aquí', min: 0, max: 100 },
+  stop: { hint: 'Bombas en AUTO se detienen al llegar aquí', min: 0, max: 100 },
 }
 
 export default function SetpointWidget({ telemetry, config }) {
@@ -46,6 +47,14 @@ export default function SetpointWidget({ telemetry, config }) {
       setDraft(String(value))
     }
   }, [pending, telemetry.setpointFeedbackAt, value])
+
+  useEffect(() => {
+    if (result.type !== 'success') return undefined
+    const timeout = window.setTimeout(() => {
+      setResult({ type: 'idle', message: '' })
+    }, CONFIRMATION_VISIBLE_MS)
+    return () => window.clearTimeout(timeout)
+  }, [result.type])
 
   const submit = async (event) => {
     event.preventDefault()
