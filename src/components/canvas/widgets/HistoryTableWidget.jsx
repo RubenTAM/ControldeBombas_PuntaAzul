@@ -61,6 +61,9 @@ export default function HistoryTableWidget({ telemetry, config, editMode, onConf
             </tr>
           </thead>
           <tbody>
+            {!rows.length && (
+              <tr><td colSpan="3" className="px-4 py-8 text-center text-xs text-ink-400">Esperando lecturas reales de nivel…</td></tr>
+            )}
             {rows.map((r, i) => {
               const status = statusFor(r.level, telemetry.thresholds)
               return (

@@ -15,17 +15,6 @@ const PAD_B = 34
 const PLOT_W = VB_W - PAD_L - PAD_R
 const PLOT_H = VB_H - PAD_T - PAD_B
 
-function buildWeekSeries(endTime) {
-  const points = 84
-  const spanMs = 7 * 24 * 3_600_000
-  return Array.from({ length: points }, (_, i) => {
-    const t = endTime - spanMs + (i / (points - 1)) * spanMs
-    const hourFraction = ((t / 3_600_000) % 24) / 24
-    const level = Math.max(18, Math.min(92, 66 + Math.sin((hourFraction - 0.15) * Math.PI * 2) * 15 + Math.sin(i * 0.35) * 4))
-    return { t, level: Math.round(level * 10) / 10 }
-  })
-}
-
 export default function LevelHistoryChart({ telemetry, config, editMode, onConfigChange }) {
   const { history, thresholds, limits, now, level } = telemetry
   const eyebrow = config?.eyebrow ?? 'Tendencia de proceso'
@@ -37,19 +26,19 @@ export default function LevelHistoryChart({ telemetry, config, editMode, onConfi
   const uid = useId().replace(/:/g, '')
   const fillId = `levelFill-${uid}`
   const strokeId = `levelStroke-${uid}`
-  const weekSeries = useMemo(() => buildWeekSeries(now), []) // eslint-disable-line react-hooks/exhaustive-deps
-
   const data = useMemo(() => {
-    if (range === '7d') return weekSeries
     if (range === '6h') {
-      const live = history.filter((p) => p.t >= now - 6 * 3_600_000)
-      return live.length >= 2 ? live : history.slice(-36)
+      return history.filter((p) => p.t >= now - 6 * 3_600_000)
     }
-    return history
-  }, [range, history, weekSeries, now])
+    if (range === '24h') return history.filter((p) => p.t >= now - 24 * 3_600_000)
+    return history.filter((p) => p.t >= now - 7 * 24 * 3_600_000)
+  }, [range, history, now])
 
   const chart = useMemo(() => {
-    if (data.length < 2) return { linePath: '', areaPath: '', points: [], minT: 0, maxT: 1 }
+    if (data.length < 2) {
+      const span = range === '6h' ? 6 * 3_600_000 : range === '24h' ? 24 * 3_600_000 : 7 * 24 * 3_600_000
+      return { linePath: '', areaPath: '', points: [], minT: now - span, maxT: now }
+    }
     const minT = data[0].t
     const maxT = data[data.length - 1].t
     const xFor = (t) => PAD_L + ((t - minT) / (maxT - minT || 1)) * PLOT_W
@@ -58,7 +47,7 @@ export default function LevelHistoryChart({ telemetry, config, editMode, onConfi
     const linePath = points.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
     const areaPath = `${linePath} L${points.at(-1).x.toFixed(1)},${PAD_T + PLOT_H} L${points[0].x.toFixed(1)},${PAD_T + PLOT_H} Z`
     return { linePath, areaPath, points, minT, maxT }
-  }, [data])
+  }, [data, now, range])
 
   const yFor = (value) => PAD_T + (1 - value / 100) * PLOT_H
   const hover = hoverIdx !== null ? chart.points[hoverIdx] : null
@@ -137,6 +126,7 @@ export default function LevelHistoryChart({ telemetry, config, editMode, onConfi
       </div>
 
       <div className="relative min-h-0 flex-1 rounded-xl border border-ink-100 bg-gradient-to-b from-white to-navy-50/35 p-1">
+        {!data.length && <div className="absolute inset-0 z-10 flex items-center justify-center text-xs font-semibold text-ink-400">Esperando lecturas reales de nivel…</div>}
         <svg ref={svgRef} viewBox={`0 0 ${VB_W} ${VB_H}`} className="h-full w-full touch-none" preserveAspectRatio="xMidYMid meet" onMouseMove={handleMove} onMouseLeave={() => setHoverIdx(null)}>
           <defs>
             <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">

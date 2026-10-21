@@ -63,7 +63,7 @@ function PumpEquipment({ running, fault }) {
   )
 }
 
-export default function PumpCard({ pump, onToggle }) {
+export default function PumpCard({ pump }) {
   const running = pump.running
   return (
     <div
@@ -92,18 +92,6 @@ export default function PumpCard({ pump, onToggle }) {
       <div className="absolute bottom-0 left-0">
         <PumpEquipment running={running} fault={pump.fault} />
       </div>
-
-      {pump.mode === 'MANUAL' && (
-        <button
-          onClick={() => onToggle(pump.id, !running)}
-          className={[
-            'absolute bottom-2 left-2 z-20 rounded-md px-2 py-1 text-[9px] font-bold shadow-sm transition-colors',
-            running ? 'bg-status-criticalBg text-status-critical hover:bg-status-critical/20' : 'bg-status-goodBg text-status-good hover:bg-status-good/20',
-          ].join(' ')}
-        >
-          {running ? 'Detener' : 'Arrancar'}
-        </button>
-      )}
 
       {pump.fault && (
         <div className="absolute bottom-2 right-2 z-20 flex items-center gap-1 rounded-md bg-white/90 px-1.5 py-1 text-[9px] font-semibold text-status-critical shadow-sm">

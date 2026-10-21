@@ -79,10 +79,19 @@ function bindTelemetry(widget, widgets, telemetry, broker) {
 
   if (widget.type === 'pump') {
     const running = asBoolean(mqttValue(broker, config.runningTag))
-    if (running !== undefined) {
-      const pumpId = config.pumpId || 'p1'
-      next.pumps = { ...telemetry.pumps, [pumpId]: { ...telemetry.pumps[pumpId], running } }
-    }
+    const fault = asBoolean(mqttValue(broker, config.faultTag))
+    const auto = asBoolean(mqttValue(broker, config.autoTag))
+    const manual = asBoolean(mqttValue(broker, config.manualTag))
+    const off = asBoolean(mqttValue(broker, config.offTag))
+    const pumpId = config.pumpId || 'p1'
+    const mode = auto ? 'AUTO' : manual ? 'MANUAL' : off ? 'OFF' : telemetry.pumps[pumpId].mode
+    next.pumps = { ...telemetry.pumps, [pumpId]: {
+      ...telemetry.pumps[pumpId],
+      running: running ?? telemetry.pumps[pumpId].running,
+      fault: fault ?? telemetry.pumps[pumpId].fault,
+      mode,
+    } }
+    next.flowAnimating = Boolean(running)
   }
 
   if (widget.type === 'modeselect') {
@@ -96,7 +105,7 @@ function bindTelemetry(widget, widgets, telemetry, broker) {
 
   if (widget.type === 'setpoint' && config.writeTag) {
     const key = config.key === 'stop' ? 'stop' : 'start'
-    const brokerValue = Number(mqttValue(broker, config.writeTag))
+    const brokerValue = Number(mqttValue(broker, config.feedbackTag))
     if (Number.isFinite(brokerValue)) next.thresholds = { ...telemetry.thresholds, [key]: brokerValue }
     next.setThreshold = (changedKey, value) => {
       telemetry.setThreshold(changedKey, value)
@@ -113,6 +122,15 @@ function bindTelemetry(widget, widgets, telemetry, broker) {
     if (Number.isFinite(current)) {
       next.level = current
       next.now = broker.topicValues[topic].receivedAt
+    }
+    const tankKey = tank?.config?.tankKey
+    const start = widgets.find((item) => item.type === 'setpoint' && item.config?.tankKey === tankKey && item.config?.key === 'start')
+    const stop = widgets.find((item) => item.type === 'setpoint' && item.config?.tankKey === tankKey && item.config?.key === 'stop')
+    const startValue = Number(mqttValue(broker, start?.config?.feedbackTag))
+    const stopValue = Number(mqttValue(broker, stop?.config?.feedbackTag))
+    next.thresholds = {
+      start: Number.isFinite(startValue) ? startValue : telemetry.thresholds.start,
+      stop: Number.isFinite(stopValue) ? stopValue : telemetry.thresholds.stop,
     }
   }
 
@@ -679,7 +697,7 @@ export default function DashboardCanvas({ telemetry, canvas, broker }) {
       {widgets.length === 0 && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm text-ink-300">
             <IconLayoutBoard className="h-6 w-6" />
-            {editMode ? 'Arrastra un widget de la paleta hacia aquí para empezar' : 'Lienzo vacío — activa "Editar lienzo" para agregar widgets'}
+            {editMode ? 'Arrastra un widget de la paleta hacia aquí para empezar' : 'Dashboard sin configuración.'}
           </div>
         )}
 

@@ -1,9 +1,8 @@
-import { IconBroker, IconGrid, IconSettings, IconUsers, IconX } from '../icons.jsx'
+import { IconGrid, IconSettings, IconUsers, IconX } from '../icons.jsx'
 import puntaAzulLogo from '../assets/puntaazul-logo.png'
 
 const NAV = [
   { key: 'dashboard', label: 'Dashboard', icon: IconGrid },
-  { key: 'broker', label: 'Broker', icon: IconBroker },
 ]
 
 const FOOT = [

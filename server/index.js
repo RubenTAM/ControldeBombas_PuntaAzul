@@ -7,6 +7,7 @@
 import express from 'express'
 import cors from 'cors'
 import pg from 'pg'
+import mqtt from 'mqtt'
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
 
 const { Pool } = pg
@@ -15,6 +16,61 @@ const PORT = process.env.PORT || 8080
 const DATABASE_URL = process.env.DATABASE_URL
 const SESSION_DAYS = 30
 const SCHEMA_RETRY_MS = 5000
+const MQTT_URL = 'mqtt://159.65.237.239:1883'
+
+// The broker is deliberately fixed. Browsers cannot connect to MQTT/TCP on
+// port 1883, so this process owns the connection and exposes a small,
+// authenticated HTTP bridge to the dashboard.
+const mqttState = {
+  status: 'connecting',
+  message: 'Conectando al broker…',
+  values: {},
+}
+
+function payloadValue(payload) {
+  const raw = payload.toString().trim()
+  try {
+    const parsed = JSON.parse(raw)
+    return parsed && typeof parsed === 'object' && 'value' in parsed ? parsed.value : parsed
+  } catch {
+    return raw
+  }
+}
+
+const mqttClient = mqtt.connect(MQTT_URL, {
+  clientId: `puntaazul_server_${randomBytes(6).toString('hex')}`,
+  clean: true,
+  protocolVersion: 4,
+  reconnectPeriod: 5000,
+  connectTimeout: 15000,
+  keepalive: 30,
+})
+
+mqttClient.on('connect', () => {
+  mqttState.status = 'connected'
+  mqttState.message = 'Conectado a 159.65.237.239:1883'
+  mqttClient.subscribe('#', { qos: 0 }, (error) => {
+    if (error) {
+      mqttState.status = 'error'
+      mqttState.message = `No fue posible suscribirse: ${error.message}`
+    }
+  })
+})
+mqttClient.on('reconnect', () => {
+  mqttState.status = 'connecting'
+  mqttState.message = 'Reconectando al broker…'
+})
+mqttClient.on('offline', () => {
+  mqttState.status = 'disconnected'
+  mqttState.message = 'Broker sin conexión; reintentando…'
+})
+mqttClient.on('error', (error) => {
+  mqttState.status = 'error'
+  mqttState.message = error.message
+})
+mqttClient.on('message', (topic, payload) => {
+  mqttState.values[topic] = { value: payloadValue(payload), receivedAt: Date.now() }
+})
 
 let databaseReady = false
 let databaseError = null
@@ -157,6 +213,8 @@ app.get('/', (_req, res) =>
     service: 'puntaazul-api',
     status: 'ok',
     database: databaseReady ? 'ready' : 'initializing',
+    mqtt: mqttState.status,
+    mqttMessage: mqttState.message,
   }),
 )
 
@@ -198,6 +256,26 @@ app.post('/api/auth/login', async (req, res) => {
 })
 
 app.get('/api/auth/me', authenticate, (req, res) => res.json({ user: req.user }))
+
+app.get('/api/telemetry', authenticate, (_req, res) => {
+  res.json({
+    broker: { status: mqttState.status, message: mqttState.message },
+    values: mqttState.values,
+  })
+})
+
+app.post('/api/telemetry/write', authenticate, (req, res) => {
+  const topic = String(req.body?.topic || '').trim()
+  const allowedTopics = new Set(['Real_1', 'Real_2', 'Real_3', 'Real_4'])
+  const value = Number(req.body?.value)
+  if (!allowedTopics.has(topic)) return res.status(400).json({ message: 'Tag de escritura no permitida.' })
+  if (!Number.isFinite(value)) return res.status(400).json({ message: 'El valor debe ser numérico.' })
+  if (!mqttClient.connected) return res.status(503).json({ message: 'El broker MQTT no está conectado.' })
+  mqttClient.publish(topic, String(value), { qos: 0, retain: false }, (error) => {
+    if (error) return res.status(502).json({ message: error.message })
+    res.json({ ok: true, topic, value })
+  })
+})
 
 app.post('/api/auth/logout', authenticate, async (req, res) => {
   const token = req.headers.authorization.match(/^Bearer\s+(.+)$/i)[1]
@@ -330,6 +408,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
 })
 
 function shutdown() {
+  mqttClient.end(true)
   server.close(() => pool.end().finally(() => process.exit(0)))
 }
 

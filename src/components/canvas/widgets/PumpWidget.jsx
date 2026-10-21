@@ -123,7 +123,7 @@ export default function PumpWidget({ telemetry, config, width, height }) {
         className="absolute"
         style={{ left: cardLeft, top: cardTop, width: CARD_WIDTH, height: CARD_HEIGHT }}
       >
-        <PumpCard pump={pump} onToggle={telemetry.setPumpRunning} />
+        <PumpCard pump={pump} />
       </div>
 
       {/* These overlays each contain the entire run from the pump body to

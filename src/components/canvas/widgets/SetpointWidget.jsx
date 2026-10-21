@@ -27,7 +27,10 @@ export default function SetpointWidget({ telemetry, config }) {
   return (
     <div className="flex w-full flex-col gap-2.5">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold text-ink-500">{meta.label}</p>
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-live-600">{config?.tankLabel}</p>
+          <p className="text-xs font-semibold text-ink-500">{key === 'start' ? 'Arranque' : 'Paro'}</p>
+        </div>
         <span className="font-mono text-lg font-bold tabular-nums text-navy-900">{value}%</span>
       </div>
       <input
