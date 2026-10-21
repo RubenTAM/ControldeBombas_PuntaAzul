@@ -17,6 +17,12 @@ const DATABASE_URL = process.env.DATABASE_URL
 const SESSION_DAYS = 30
 const SCHEMA_RETRY_MS = 5000
 const MQTT_URL = 'mqtt://159.65.237.239:1883'
+const LEVEL_TOPICS = {
+  PATanque_Real_1: 'tanque-superior',
+  PACarcamo_Real_5: 'tanque-carcamo',
+}
+const LEVEL_SAMPLE_MS = 60_000
+const lastLevelSave = {}
 
 // The broker is deliberately fixed. Browsers cannot connect to MQTT/TCP on
 // port 1883, so this process owns the connection and exposes a small,
@@ -69,7 +75,19 @@ mqttClient.on('error', (error) => {
   mqttState.message = error.message
 })
 mqttClient.on('message', (topic, payload) => {
-  mqttState.values[topic] = { value: payloadValue(payload), receivedAt: Date.now() }
+  const value = payloadValue(payload)
+  const receivedAt = Date.now()
+  mqttState.values[topic] = { value, receivedAt }
+
+  const zona = LEVEL_TOPICS[topic]
+  const numeric = Number(value)
+  if (zona && databaseReady && Number.isFinite(numeric) && numeric >= 0 && numeric <= 100 && receivedAt - (lastLevelSave[topic] || 0) >= LEVEL_SAMPLE_MS) {
+    lastLevelSave[topic] = receivedAt
+    void recordReading({ zona, nivel_pct: numeric }).catch((error) => {
+      lastLevelSave[topic] = 0
+      console.error(`[puntaazul-api] no se pudo guardar ${topic}:`, error.message)
+    })
+  }
 })
 
 let databaseReady = false
@@ -389,6 +407,12 @@ async function prepareDatabase() {
     await ensureSchema()
     databaseReady = true
     databaseError = null
+    await Promise.all(Object.entries(LEVEL_TOPICS).map(async ([topic, zona]) => {
+      const numeric = Number(mqttState.values[topic]?.value)
+      if (!Number.isFinite(numeric) || numeric < 0 || numeric > 100) return
+      await recordReading({ zona, nivel_pct: numeric })
+      lastLevelSave[topic] = Date.now()
+    }))
     console.log('[puntaazul-api] base de datos lista')
   } catch (err) {
     databaseReady = false

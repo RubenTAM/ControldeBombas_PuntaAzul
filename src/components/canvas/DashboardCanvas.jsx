@@ -107,10 +107,8 @@ function bindTelemetry(widget, widgets, telemetry, broker) {
     const key = config.key === 'stop' ? 'stop' : 'start'
     const brokerValue = Number(mqttValue(broker, config.feedbackTag))
     if (Number.isFinite(brokerValue)) next.thresholds = { ...telemetry.thresholds, [key]: brokerValue }
-    next.setThreshold = (changedKey, value) => {
-      telemetry.setThreshold(changedKey, value)
-      broker?.publish(config.writeTag, value)
-    }
+    next.setpointFeedbackAt = broker?.topicValues?.[config.feedbackTag]?.receivedAt
+    next.setThreshold = (_changedKey, value) => broker?.publish(config.writeTag, value)
   }
 
   if (widget.type === 'levelhistory' || widget.type === 'history-table') {
