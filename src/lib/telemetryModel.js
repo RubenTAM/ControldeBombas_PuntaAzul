@@ -25,6 +25,7 @@ const PUMPS = [
 ]
 
 const DIGITAL_SIGNAL_MAX_AGE_MS = 2 * 60 * 1000
+const PLC_ACTIVITY_MAX_AGE_MS = 2 * 60 * 1000
 
 function topicValue(broker, topic) {
   return broker?.topicValues?.[topic]?.value
@@ -45,6 +46,20 @@ export function freshBoolean(sample, now = Date.now()) {
   const value = asBoolean(sample?.value)
   const fresh = Number.isFinite(receivedAt) && now - receivedAt <= DIGITAL_SIGNAL_MAX_AGE_MS
   return { value: fresh && value !== undefined ? value : false, known: fresh && value !== undefined }
+}
+
+export function plcIsConnected(history, brokerStatus, now = Date.now()) {
+  if (brokerStatus !== 'connected' || !Array.isArray(history) || history.length < 2) return false
+  for (let index = history.length - 1; index > 0; index -= 1) {
+    const current = history[index]
+    const previous = history[index - 1]
+    const changedAt = Number(current?.t)
+    const currentLevel = Number(current?.level)
+    const previousLevel = Number(previous?.level)
+    if (!Number.isFinite(changedAt) || !Number.isFinite(currentLevel) || !Number.isFinite(previousLevel)) continue
+    if (Math.abs(currentLevel - previousLevel) > 0.001) return now - changedAt <= PLC_ACTIVITY_MAX_AGE_MS
+  }
+  return false
 }
 
 export function buildTelemetryModel(base, broker) {
@@ -107,7 +122,12 @@ export function buildTelemetryModel(base, broker) {
     }
   })
 
-  return { tanks, pumps }
+  const plcs = [
+    { key: 'carcamo', label: 'PLC - Cárcamo', connected: plcIsConnected(tanks.carcamo.history, broker?.status) },
+    { key: 'superior', label: 'PLC - Tanque superior', connected: plcIsConnected(tanks.superior.history, broker?.status) },
+  ]
+
+  return { tanks, pumps, plcs }
 }
 
 export const TELEMETRY_TOPICS = [

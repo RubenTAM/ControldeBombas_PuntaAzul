@@ -24,6 +24,11 @@ export default function App() {
     activeAlarms: [{ id: 'sensor', time: broker.topicValues.PACarcamo_Bool_11.receivedAt, severity: 'warning', tag: 'SENSOR', message: 'Alarma de sensor / ignorar activa', acknowledged: false }],
   } : telemetry
   const model = useMemo(() => buildTelemetryModel(liveTelemetry, broker), [liveTelemetry, broker])
+  const disconnectedPlcs = model.plcs.filter((plc) => !plc.connected)
+  const connectedPlcCount = model.plcs.length - disconnectedPlcs.length
+  const plcStatusText = disconnectedPlcs.length === 0
+    ? 'Conectado a 2/2 PLCs'
+    : `Conectado a ${connectedPlcCount}/2 PLCs · Sin comunicación: ${disconnectedPlcs.map((plc) => plc.label).join(' y ')}`
 
   useEffect(() => {
     broker.setSubscriptions(TELEMETRY_TOPICS)
@@ -69,9 +74,8 @@ export default function App() {
                 <div>
                   <p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-live-600">Centro de control</p>
                   <h1 className="mt-1 text-2xl font-black tracking-tight text-navy-900 sm:text-3xl">Operación en tiempo real</h1>
-                  <p className="mt-1 text-sm text-ink-400">Supervisión de niveles, bombas y consignas de operación.</p>
                 </div>
-                <span className={broker.status === 'connected' ? 'inline-flex items-center gap-2 rounded-full bg-status-goodBg px-3 py-2 text-xs font-bold text-status-good' : 'inline-flex items-center gap-2 rounded-full bg-status-warningBg px-3 py-2 text-xs font-bold text-status-warning'}><span className="h-2 w-2 rounded-full bg-current" />{broker.statusMessage}</span>
+                <span className={disconnectedPlcs.length === 0 ? 'inline-flex items-center gap-2 rounded-full bg-status-goodBg px-3 py-2 text-xs font-bold text-status-good' : 'inline-flex items-center gap-2 rounded-full bg-status-criticalBg px-3 py-2 text-xs font-bold text-status-critical'}><span className="h-2 w-2 rounded-full bg-current" />{plcStatusText}</span>
               </div>
               <DashboardOverview model={model} broker={broker} alarmCount={liveTelemetry.activeAlarms.length} />
             </>

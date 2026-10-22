@@ -10,7 +10,7 @@ function CardTitle({ eyebrow, title, detail, action }) {
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
         <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-live-600">{eyebrow}</p>
-        <h3 className="mt-1 text-lg font-extrabold tracking-tight text-navy-900">{title}</h3>
+        {title && <h3 className="mt-1 text-lg font-extrabold tracking-tight text-navy-900">{title}</h3>}
         {detail && <p className="mt-0.5 text-xs text-ink-400">{detail}</p>}
       </div>
       {action}
@@ -20,7 +20,6 @@ function CardTitle({ eyebrow, title, detail, action }) {
 
 function TankGauge({ tank, compact = false }) {
   const level = Number.isFinite(tank.level) ? tank.level : 0
-  const state = level >= 95 ? ['Crítico', 'critical'] : level <= 15 ? ['Crítico', 'critical'] : tank.thresholds.stop > 0 && level >= tank.thresholds.stop ? ['Nivel alto', 'warning'] : tank.thresholds.start > 0 && level <= tank.thresholds.start ? ['Nivel bajo', 'warning'] : ['En rango', 'good']
   return (
     <article className={cx('tank-card relative overflow-hidden rounded-[24px] border border-white/80 bg-white/90 shadow-card', compact ? 'p-4' : 'p-5')}>
       <div className="relative z-10 flex items-start justify-between gap-3">
@@ -28,9 +27,6 @@ function TankGauge({ tank, compact = false }) {
           <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-ink-400">{tank.location}</p>
           <h4 className="mt-1 text-base font-extrabold text-navy-900">{tank.label}</h4>
         </div>
-        <span className={cx('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-extrabold', state[1] === 'good' ? 'bg-status-goodBg text-status-good' : state[1] === 'warning' ? 'bg-status-warningBg text-status-warning' : 'bg-status-criticalBg text-status-critical')}>
-          <span className="h-1.5 w-1.5 rounded-full bg-current" /> {state[0]}
-        </span>
       </div>
       <div className={cx('relative z-10 flex items-center justify-center', compact ? 'mt-3' : 'mt-4')}>
         <div className={cx('tank-orb relative overflow-hidden rounded-full border-[3px] border-white bg-navy-50 shadow-[0_0_0_2px_#83a9ff,0_18px_45px_-22px_rgba(35,67,139,.75)]', compact ? 'h-36 w-36' : 'h-44 w-44')}>
@@ -80,18 +76,11 @@ function PumpStatus({ pump }) {
   )
 }
 
-function FlowConnector({ label }) {
+function FlowConnector() {
   return (
-    <div className="flex items-center justify-center py-1 xl:flex-col xl:py-0">
-      <div className="hidden w-full items-center xl:flex">
-        <span className="h-3 flex-1 rounded-l-full bg-gradient-to-b from-slate-200 via-slate-400 to-slate-200 shadow-sm" />
-        <span className="-ml-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-live-500 text-xl font-black text-white shadow-[0_8px_20px_-8px_rgba(15,179,204,.8)]">→</span>
-      </div>
-      <div className="flex flex-col items-center xl:hidden">
-        <span className="h-8 w-2.5 rounded-t-full bg-gradient-to-r from-slate-200 via-slate-400 to-slate-200" />
-        <span className="-mt-1 flex h-9 w-9 items-center justify-center rounded-full bg-live-500 text-lg font-black text-white shadow-sm">↓</span>
-      </div>
-      <p className="mt-2 whitespace-nowrap text-center text-[9px] font-extrabold uppercase tracking-[0.14em] text-live-600">{label}</p>
+    <div className="flex items-center justify-center py-1 xl:py-0">
+      <span className="hidden h-3 w-full rounded-full bg-gradient-to-b from-slate-200 via-slate-400 to-slate-200 shadow-sm xl:block" />
+      <span className="h-10 w-2.5 rounded-full bg-gradient-to-r from-slate-200 via-slate-400 to-slate-200 shadow-sm xl:hidden" />
     </div>
   )
 }
@@ -100,18 +89,15 @@ function ProcessLine({ tanks, pumps }) {
   const running = pumps.some((pump) => pump.running)
   return (
     <section className="overflow-hidden rounded-[28px] border border-white/80 bg-white/80 p-4 shadow-card backdrop-blur sm:p-6">
-      <CardTitle eyebrow="Proceso en tiempo real" title="Impulsión de agua" detail="El agua sale del cárcamo, pasa por las bombas y se envía al tanque superior" action={<span className={cx('inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wide', running ? 'bg-status-goodBg text-status-good' : 'bg-navy-50 text-ink-400')}><span className={cx('h-2 w-2 rounded-full', running ? 'bg-status-good animate-pulse' : 'bg-ink-300')} />{running ? 'Flujo activo' : 'En espera'}</span>} />
+      <CardTitle eyebrow="Proceso en tiempo real" action={<span className={cx('inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wide', running ? 'bg-status-goodBg text-status-good' : 'bg-navy-50 text-ink-400')}><span className={cx('h-2 w-2 rounded-full', running ? 'bg-status-good animate-pulse' : 'bg-ink-300')} />{running ? 'Flujo activo' : 'En espera'}</span>} />
       <div className="mt-6 grid items-stretch gap-4 xl:grid-cols-[minmax(190px,.75fr)_64px_minmax(360px,1.5fr)_64px_minmax(190px,.75fr)] 2xl:grid-cols-[minmax(240px,.8fr)_90px_minmax(520px,1.7fr)_90px_minmax(240px,.8fr)]">
         <TankGauge tank={tanks.carcamo} compact />
-        <FlowConnector label="Succión" />
+        <FlowConnector />
         <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
           {pumps.map((pump) => <PumpStatus key={pump.id} pump={pump} />)}
         </div>
-        <FlowConnector label="Impulsión" />
+        <FlowConnector />
         <TankGauge tank={tanks.superior} compact />
-      </div>
-      <div className="mt-5 flex items-center justify-center gap-3 rounded-2xl bg-navy-50 px-4 py-3 text-center text-xs font-bold text-navy-600">
-        <span>Tanque cárcamo</span><span className="text-lg text-live-600">→</span><span>Bombas 1 y 2</span><span className="text-lg text-live-600">→</span><span>Tanque superior</span>
       </div>
     </section>
   )
