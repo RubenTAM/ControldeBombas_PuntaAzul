@@ -63,10 +63,14 @@ mqttClient.on('connect', () => {
   })
 })
 mqttClient.on('reconnect', () => {
+  // Never keep presenting a pre-disconnection digital state as current.
+  // The PLC must publish the state again after the connection returns.
+  mqttState.values = {}
   mqttState.status = 'connecting'
   mqttState.message = 'Reconectando al broker…'
 })
 mqttClient.on('offline', () => {
+  mqttState.values = {}
   mqttState.status = 'disconnected'
   mqttState.message = 'Broker sin conexión; reintentando…'
 })

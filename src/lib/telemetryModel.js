@@ -24,6 +24,8 @@ const PUMPS = [
   { id: 'p2', label: 'Bomba 2', offset: 5 },
 ]
 
+const DIGITAL_SIGNAL_MAX_AGE_MS = 2 * 60 * 1000
+
 function topicValue(broker, topic) {
   return broker?.topicValues?.[topic]?.value
 }
@@ -36,6 +38,13 @@ function asBoolean(value) {
   if (['1', 'true', 'on', 'running', 'run', 'encendida', 'encendido'].includes(normalized)) return true
   if (['0', 'false', 'off', 'stopped', 'stop', 'detenida', 'detenido'].includes(normalized)) return false
   return undefined
+}
+
+export function freshBoolean(sample, now = Date.now()) {
+  const receivedAt = Number(sample?.receivedAt)
+  const value = asBoolean(sample?.value)
+  const fresh = Number.isFinite(receivedAt) && now - receivedAt <= DIGITAL_SIGNAL_MAX_AGE_MS
+  return { value: fresh && value !== undefined ? value : false, known: fresh && value !== undefined }
 }
 
 export function buildTelemetryModel(base, broker) {
@@ -85,12 +94,16 @@ export function buildTelemetryModel(base, broker) {
     const auto = asBoolean(topicValue(broker, `PACarcamo_Bool_${offset + 1}`))
     const manual = asBoolean(topicValue(broker, `PACarcamo_Bool_${offset + 2}`))
     const off = asBoolean(topicValue(broker, `PACarcamo_Bool_${offset + 3}`))
+    const running = freshBoolean(broker?.topicValues?.[`PACarcamo_Bool_${offset + 4}`])
+    const fault = freshBoolean(broker?.topicValues?.[`PACarcamo_Bool_${offset + 5}`])
     return {
       id,
       label,
       mode: auto ? 'AUTO' : manual ? 'MANUAL' : off ? 'OFF' : 'OFF',
-      running: asBoolean(topicValue(broker, `PACarcamo_Bool_${offset + 4}`)) ?? false,
-      fault: asBoolean(topicValue(broker, `PACarcamo_Bool_${offset + 5}`)) ?? false,
+      running: running.value,
+      runningKnown: running.known,
+      fault: fault.value,
+      faultKnown: fault.known,
     }
   })
 

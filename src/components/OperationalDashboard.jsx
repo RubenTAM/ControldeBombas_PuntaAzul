@@ -98,15 +98,15 @@ function TankGauge({ tank, compact = false }) {
 }
 
 function PumpStatus({ pump }) {
-  const status = pump.fault ? 'Falla' : pump.running ? 'En marcha' : 'Detenida'
+  const status = !pump.runningKnown ? 'Sin señal' : pump.fault ? 'Falla' : pump.running ? 'En marcha' : 'Detenida'
   return (
-    <article className={cx('relative overflow-hidden rounded-2xl border bg-white p-4 shadow-card transition', pump.fault ? 'border-status-critical/30' : pump.running ? 'border-status-good/30' : 'border-ink-100')}>
+    <article className={cx('relative overflow-hidden rounded-2xl border bg-white p-4 shadow-card transition', !pump.runningKnown ? 'border-status-warning/30' : pump.fault ? 'border-status-critical/30' : pump.running ? 'border-status-good/30' : 'border-ink-100')}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-ink-400">Equipo de bombeo</p>
           <h4 className="mt-1 text-base font-extrabold text-navy-900">{pump.label}</h4>
         </div>
-        <span className={cx('flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase', pump.fault ? 'bg-status-criticalBg text-status-critical' : pump.running ? 'bg-status-goodBg text-status-good' : 'bg-navy-50 text-ink-400')}>
+        <span className={cx('flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase', !pump.runningKnown ? 'bg-status-warningBg text-status-warning' : pump.fault ? 'bg-status-criticalBg text-status-critical' : pump.running ? 'bg-status-goodBg text-status-good' : 'bg-navy-50 text-ink-400')}>
           <span className={cx('relative h-2 w-2 rounded-full bg-current', pump.running && 'after:absolute after:inset-0 after:animate-ping after:rounded-full after:bg-current')} />{status}
         </span>
       </div>
@@ -119,7 +119,7 @@ function PumpStatus({ pump }) {
           <div className="grid grid-cols-3 gap-1 rounded-xl bg-navy-50 p-1">
             {['MANUAL', 'OFF', 'AUTO'].map((mode) => <span key={mode} className={cx('rounded-lg px-1 py-2 text-center text-[9px] font-extrabold transition', pump.mode === mode ? 'bg-navy-600 text-white shadow-sm' : 'text-ink-400')}>{mode === 'MANUAL' ? 'MAN' : mode}</span>)}
           </div>
-          <p className="mt-2 text-[10px] text-ink-400">{pump.fault ? 'Requiere revisión del operador' : pump.running ? 'Motor energizado y operando' : 'Equipo disponible en espera'}</p>
+          <p className="mt-2 text-[10px] text-ink-400">{!pump.runningKnown ? 'Lectura digital vencida o no recibida' : pump.fault ? 'Requiere revisión del operador' : pump.running ? 'Motor energizado y operando' : 'Equipo disponible en espera'}</p>
         </div>
       </div>
     </article>
