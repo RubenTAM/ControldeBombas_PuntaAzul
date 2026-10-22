@@ -1,63 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Sidebar from './components/Sidebar.jsx'
 import Header from './components/Header.jsx'
 import LoginPage from './components/LoginPage.jsx'
 import UsersPage from './components/UsersPage.jsx'
-import DashboardCanvas from './components/canvas/DashboardCanvas.jsx'
+import { DashboardOverview, HistoryPage } from './components/OperationalDashboard.jsx'
 import { useTelemetry } from './hooks/useTelemetry.js'
-import { useCanvas } from './hooks/useCanvas.js'
 import { useBrokerConnections } from './hooks/useBrokerConnections.js'
 import { useAuth } from './hooks/useAuth.js'
-
-function fixedDashboardWidgets(widgets) {
-  const tanks = widgets.filter((widget) => widget.type === 'tank').sort((a, b) => a.x - b.x)
-  const tankByKey = { carcamo: tanks[0], superior: tanks.at(-1) }
-  const modeCards = widgets.filter((widget) => widget.type === 'modeselect').sort((a, b) => a.x - b.x)
-  const existingSetpoints = widgets.filter((widget) => widget.type === 'setpoint').sort((a, b) => a.x - b.x)
-  const histories = widgets.filter((widget) => widget.type === 'levelhistory').sort((a, b) => a.x - b.x)
-
-  const assignments = new Map([
-    [modeCards[0]?.id, { type: 'setpoint', config: { tankKey: 'superior', tankLabel: 'Tanque Superior', key: 'start', writeTag: 'Real_1', feedbackTag: 'PACarcamo_Real_1' } }],
-    [modeCards[1]?.id, { type: 'setpoint', config: { tankKey: 'superior', tankLabel: 'Tanque Superior', key: 'stop', writeTag: 'Real_2', feedbackTag: 'PACarcamo_Real_2' } }],
-    [existingSetpoints[0]?.id, { config: { tankKey: 'carcamo', tankLabel: 'Tanque Cárcamo', key: 'start', writeTag: 'Real_3', feedbackTag: 'PACarcamo_Real_3' } }],
-    [existingSetpoints[1]?.id, { config: { tankKey: 'carcamo', tankLabel: 'Tanque Cárcamo', key: 'stop', writeTag: 'Real_4', feedbackTag: 'PACarcamo_Real_4' } }],
-  ])
-
-  return widgets.map((widget) => {
-    const assigned = assignments.get(widget.id)
-    let next = assigned ? { ...widget, ...assigned, config: { ...widget.config, ...assigned.config } } : widget
-    if (widget.id === tankByKey.carcamo?.id) next = { ...next, config: { ...next.config, tankKey: 'carcamo', label: 'Tanque Cárcamo', readTag: 'PACarcamo_Real_5' } }
-    if (widget.id === tankByKey.superior?.id) next = { ...next, config: { ...next.config, tankKey: 'superior', label: 'Tanque Superior', readTag: 'PATanque_Real_1' } }
-    if (widget.type === 'pump') {
-      const pumpId = widget.config?.pumpId === 'p2' ? 'p2' : 'p1'
-      const offset = pumpId === 'p1' ? 0 : 5
-      next = { ...next, config: {
-        ...next.config, pumpId,
-        autoTag: `PACarcamo_Bool_${offset + 1}`,
-        manualTag: `PACarcamo_Bool_${offset + 2}`,
-        offTag: `PACarcamo_Bool_${offset + 3}`,
-        runningTag: `PACarcamo_Bool_${offset + 4}`,
-        faultTag: `PACarcamo_Bool_${offset + 5}`,
-      } }
-    }
-    const historyIndex = histories.findIndex((item) => item.id === widget.id)
-    if (historyIndex >= 0) {
-      const tank = historyIndex === 0 ? tankByKey.carcamo : tankByKey.superior
-      const label = historyIndex === 0 ? 'Tanque Cárcamo' : 'Tanque Superior'
-      next = { ...next, config: { ...next.config, sourceTankId: tank?.id, title: `Histórico de Nivel ${label}`, subtitle: `${label} · nivel recibido por MQTT` } }
-    }
-    if (widget.type === 'history-table' && !widget.config?.sourceTankId) {
-      next = { ...next, config: { ...next.config, sourceTankId: tankByKey.carcamo?.id, eyebrow: 'Tanque Cárcamo' } }
-    }
-    if (widget.type === 'panel') next = { ...next, config: { ...next.config, title: 'Niveles de operación' } }
-    return next
-  })
-}
+import { buildTelemetryModel, TELEMETRY_TOPICS } from './lib/telemetryModel.js'
 
 export default function App() {
   const auth = useAuth()
   const telemetry = useTelemetry()
-  const canvas = useCanvas(auth.user ? auth.token : '', auth.user?.role === 'admin')
   const broker = useBrokerConnections(auth.user ? auth.token : '')
   const [active, setActive] = useState('dashboard')
   const [navOpen, setNavOpen] = useState(false)
@@ -69,21 +23,15 @@ export default function App() {
     alarms: [{ id: 'sensor', time: broker.topicValues.PACarcamo_Bool_11.receivedAt, severity: 'warning', tag: 'SENSOR', message: 'Alarma de sensor / ignorar activa', acknowledged: false }],
     activeAlarms: [{ id: 'sensor', time: broker.topicValues.PACarcamo_Bool_11.receivedAt, severity: 'warning', tag: 'SENSOR', message: 'Alarma de sensor / ignorar activa', acknowledged: false }],
   } : telemetry
+  const model = useMemo(() => buildTelemetryModel(liveTelemetry, broker), [liveTelemetry, broker])
 
   useEffect(() => {
-    const topics = canvas.widgets.flatMap((widget) => [
-      widget.config?.readTag,
-      widget.config?.runningTag,
-      widget.config?.modeTag,
-      widget.config?.writeTag,
-    ])
-    broker.setSubscriptions(topics)
-  }, [canvas.widgets, broker.setSubscriptions])
+    broker.setSubscriptions(TELEMETRY_TOPICS)
+  }, [broker.setSubscriptions])
 
   useEffect(() => {
-    if (!isAdmin && canvas.editMode) canvas.setEditMode(false)
-    if (!isAdmin && active !== 'dashboard') setActive('dashboard')
-  }, [isAdmin, active, canvas.editMode, canvas.setEditMode])
+    if (!isAdmin && !['dashboard', 'historicos'].includes(active)) setActive('dashboard')
+  }, [isAdmin, active])
 
   if (auth.checking) {
     return <div className="flex h-screen items-center justify-center bg-navy-950 text-sm font-semibold text-navy-200">Validando sesión…</div>
@@ -92,7 +40,7 @@ export default function App() {
   if (!auth.user) return <LoginPage onLogin={auth.login} />
 
   return (
-    <div className="flex h-screen overflow-hidden bg-navy-50">
+    <div className="flex h-screen overflow-hidden bg-[#edf1f8]">
       <Sidebar
         active={active}
         onNavigate={setActive}
@@ -107,35 +55,28 @@ export default function App() {
           alarmCount={liveTelemetry.activeAlarms.length}
           onMenu={() => setNavOpen(true)}
           user={auth.user}
+          active={active}
           onLogout={() => {
             setActive('dashboard')
             auth.logout()
           }}
         />
 
-        <main className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-5 lg:gap-5 lg:p-6">
+        <main className="min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top_right,rgba(125,220,236,.16),transparent_28%),linear-gradient(180deg,#f3f6fc_0%,#edf1f8_100%)] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
           {active === 'dashboard' ? (
             <>
-              <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
+              <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
                 <div>
-                  <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-ink-500">Dashboard de telemetría</h2>
-                  <p className="text-xs text-ink-400">
-                    Datos en tiempo real
-                    <span className={broker.status === 'connected' ? 'ml-2 text-status-good' : 'ml-2 text-status-warning'}>· {broker.statusMessage}</span>
-                  </p>
+                  <p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-live-600">Centro de control</p>
+                  <h1 className="mt-1 text-2xl font-black tracking-tight text-navy-900 sm:text-3xl">Operación en tiempo real</h1>
+                  <p className="mt-1 text-sm text-ink-400">Supervisión de niveles, bombas y consignas de operación.</p>
                 </div>
+                <span className={broker.status === 'connected' ? 'inline-flex items-center gap-2 rounded-full bg-status-goodBg px-3 py-2 text-xs font-bold text-status-good' : 'inline-flex items-center gap-2 rounded-full bg-status-warningBg px-3 py-2 text-xs font-bold text-status-warning'}><span className="h-2 w-2 rounded-full bg-current" />{broker.statusMessage}</span>
               </div>
-
-              {canvas.syncStatus === 'error' && (
-                <div className="shrink-0 rounded-xl bg-status-warningBg px-4 py-2 text-xs font-semibold text-status-warning">No se pudo sincronizar el lienzo con el servidor.</div>
-              )}
-
-              {canvas.syncStatus === 'loading' ? (
-                <div className="flex flex-1 items-center justify-center rounded-2xl bg-white text-sm font-semibold text-ink-400 shadow-card">Cargando lienzo compartido…</div>
-              ) : (
-                <DashboardCanvas telemetry={liveTelemetry} canvas={{ ...canvas, editMode: false, widgets: fixedDashboardWidgets(canvas.widgets) }} broker={broker} />
-              )}
+              <DashboardOverview model={model} broker={broker} alarmCount={liveTelemetry.activeAlarms.length} />
             </>
+          ) : active === 'historicos' ? (
+            <HistoryPage model={model} />
           ) : active === 'usuarios' && isAdmin ? (
             <UsersPage token={auth.token} currentUser={auth.user} />
           ) : (

@@ -11,6 +11,53 @@ body {
   font-feature-settings: 'ss01' 1;
 }
 
+.tank-card::after {
+  content: '';
+  position: absolute;
+  width: 170px;
+  height: 170px;
+  right: -70px;
+  bottom: -85px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(125, 220, 236, 0.22), transparent 68%);
+}
+
+.tank-orb {
+  isolation: isolate;
+}
+
+.tank-liquid {
+  box-shadow: inset 12px 0 20px rgba(255,255,255,.22), inset -10px 0 18px rgba(14,41,102,.14);
+}
+
+.tank-wave {
+  animation: tankBob 3.8s ease-in-out infinite;
+}
+
+.process-pipe {
+  background: linear-gradient(180deg, #eef2f7 0%, #aeb8c8 30%, #718097 48%, #d8dee7 70%, #8995a8 100%);
+  box-shadow: 0 4px 8px rgba(26,42,75,.2), inset 0 2px 1px rgba(255,255,255,.75);
+}
+
+.process-pipe::after {
+  content: '';
+  position: absolute;
+  inset: 3px 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, rgba(53,201,224,.85), transparent);
+  background-size: 140px 100%;
+  animation: pipeFlow 2.2s linear infinite;
+}
+
+@keyframes tankBob {
+  0%, 100% { transform: translateY(0) scaleX(1); }
+  50% { transform: translateY(2px) scaleX(.96); }
+}
+
+@keyframes pipeFlow {
+  to { background-position: 280px 0; }
+}
+
 .tnum {
   font-variant-numeric: tabular-nums;
 }

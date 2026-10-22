@@ -5,13 +5,16 @@ import { IconLogout, IconMenu } from '../icons.jsx'
 // alarms themselves still exist (Sidebar's Dashboard badge, AlarmsPanel), just
 // not this header shortcut. Re-add a <button> with IconBell + alarmCount if
 // it comes back.
-export default function Header({ onMenu, user, onLogout }) {
+const TITLES = { dashboard: 'Punta Azul', historicos: 'Históricos', usuarios: 'Usuarios', config: 'Configuración' }
+
+export default function Header({ onMenu, user, onLogout, active }) {
   return (
-    <header className="flex shrink-0 items-center justify-between gap-4 border-b border-ink-100 bg-white/80 px-5 py-4 backdrop-blur lg:px-8">
+    <header className="flex shrink-0 items-center justify-between gap-4 border-b border-white bg-white/85 px-5 py-3.5 backdrop-blur lg:px-8">
       <div className="flex items-center gap-3">
         <button onClick={onMenu} className="rounded-lg p-2 text-ink-500 hover:bg-navy-50 lg:hidden">
           <IconMenu className="h-5 w-5" />
         </button>
+        <div><p className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-ink-300">Telemetría</p><p className="text-sm font-extrabold text-navy-900">{TITLES[active] || 'Punta Azul'}</p></div>
       </div>
 
       <div className="flex items-center gap-2.5 sm:gap-3">
