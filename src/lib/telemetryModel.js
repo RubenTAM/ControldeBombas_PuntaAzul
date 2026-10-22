@@ -48,18 +48,11 @@ export function freshBoolean(sample, now = Date.now()) {
   return { value: fresh && value !== undefined ? value : false, known: fresh && value !== undefined }
 }
 
-export function plcIsConnected(history, brokerStatus, now = Date.now()) {
-  if (brokerStatus !== 'connected' || !Array.isArray(history) || history.length < 2) return false
-  for (let index = history.length - 1; index > 0; index -= 1) {
-    const current = history[index]
-    const previous = history[index - 1]
-    const changedAt = Number(current?.t)
-    const currentLevel = Number(current?.level)
-    const previousLevel = Number(previous?.level)
-    if (!Number.isFinite(changedAt) || !Number.isFinite(currentLevel) || !Number.isFinite(previousLevel)) continue
-    if (Math.abs(currentLevel - previousLevel) > 0.001) return now - changedAt <= PLC_ACTIVITY_MAX_AGE_MS
-  }
-  return false
+export function plcIsConnected(sample, brokerStatus, now = Date.now()) {
+  const receivedAt = Number(sample?.receivedAt)
+  return brokerStatus === 'connected'
+    && Number.isFinite(receivedAt)
+    && now - receivedAt <= PLC_ACTIVITY_MAX_AGE_MS
 }
 
 export function buildTelemetryModel(base, broker) {
@@ -123,8 +116,8 @@ export function buildTelemetryModel(base, broker) {
   })
 
   const plcs = [
-    { key: 'carcamo', label: 'PLC - Cárcamo', connected: plcIsConnected(tanks.carcamo.history, broker?.status) },
-    { key: 'superior', label: 'PLC - Tanque superior', connected: plcIsConnected(tanks.superior.history, broker?.status) },
+    { key: 'carcamo', label: 'PLC - Cárcamo', connected: plcIsConnected(broker?.topicValues?.[TANKS.carcamo.levelTag], broker?.status) },
+    { key: 'superior', label: 'PLC - Tanque superior', connected: plcIsConnected(broker?.topicValues?.[TANKS.superior.levelTag], broker?.status) },
   ]
 
   return { tanks, pumps, plcs }

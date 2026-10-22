@@ -14,17 +14,18 @@ test('an expired running value is never kept as running', () => {
   assert.deepEqual(freshBoolean({ value: 1, receivedAt: 1_000 }, 121_001), { value: false, known: false })
 })
 
-test('a PLC is connected when its level changed recently', () => {
-  const history = [{ t: 1_000, level: 40 }, { t: 2_000, level: 41 }]
-  assert.equal(plcIsConnected(history, 'connected', 2_500), true)
+test('a PLC is connected when its level tag was received recently', () => {
+  assert.equal(plcIsConnected({ value: 40, receivedAt: 2_000 }, 'connected', 2_500), true)
 })
 
-test('a PLC is disconnected when fresh samples stay unchanged', () => {
-  const history = [{ t: 1_000, level: 40 }, { t: 2_000, level: 41 }, { t: 122_001, level: 41 }]
-  assert.equal(plcIsConnected(history, 'connected', 122_500), false)
+test('a PLC remains connected when the received level value stays unchanged', () => {
+  assert.equal(plcIsConnected({ value: 40, receivedAt: 122_001 }, 'connected', 122_500), true)
+})
+
+test('a PLC is disconnected when its level tag stops arriving', () => {
+  assert.equal(plcIsConnected({ value: 40, receivedAt: 2_000 }, 'connected', 122_001), false)
 })
 
 test('a PLC is disconnected when the broker is offline', () => {
-  const history = [{ t: 1_000, level: 40 }, { t: 2_000, level: 41 }]
-  assert.equal(plcIsConnected(history, 'disconnected', 2_500), false)
+  assert.equal(plcIsConnected({ value: 40, receivedAt: 2_000 }, 'disconnected', 2_500), false)
 })
