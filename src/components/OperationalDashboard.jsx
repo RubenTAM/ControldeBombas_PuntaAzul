@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
 import LevelHistoryChart from './LevelHistoryChart.jsx'
 import SetpointWidget from './canvas/widgets/SetpointWidget.jsx'
 import HistoryTableWidget from './canvas/widgets/HistoryTableWidget.jsx'
@@ -5,6 +6,50 @@ import pumpPhoto from '../assets/pump-photo.png'
 import { IconActivity, IconAlertTriangle, IconDroplet, IconGauge, IconHistory, IconPump, IconWifi } from '../icons.jsx'
 
 const cx = (...classes) => classes.filter(Boolean).join(' ')
+const PLC_ACTIVITY_WINDOW_MS = 2 * 60 * 1000
+
+function lastRecordedChange(history = []) {
+  for (let index = history.length - 1; index > 0; index -= 1) {
+    if (Math.abs(Number(history[index].level) - Number(history[index - 1].level)) >= 0.01) return Number(history[index].t)
+  }
+  return null
+}
+
+function usePlcActivity(broker, topic) {
+  const sample = broker.topicValues?.[topic]
+  const history = broker.topicHistory?.[topic]
+  const previousValue = useRef()
+  const [lastChangedAt, setLastChangedAt] = useState(() => lastRecordedChange(history))
+  const [now, setNow] = useState(Date.now())
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 5_000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    const value = Number(sample?.value)
+    if (!Number.isFinite(value)) return
+    if (previousValue.current !== undefined && Math.abs(value - previousValue.current) >= 0.01) {
+      setLastChangedAt(Number(sample.receivedAt) || Date.now())
+    } else if (previousValue.current === undefined) {
+      const recorded = lastRecordedChange(history)
+      if (recorded) setLastChangedAt(recorded)
+    }
+    previousValue.current = value
+  }, [sample?.value, sample?.receivedAt, history])
+
+  return useMemo(() => {
+    if (broker.status !== 'connected' || !sample) return { value: 'Sin enlace', detail: `Sin datos de ${topic}`, tone: 'critical', active: false }
+    if (!lastChangedAt) return { value: 'Sin variación', detail: `Esperando cambio en ${topic}`, tone: 'warning', active: false }
+    const age = Math.max(0, now - lastChangedAt)
+    if (age <= PLC_ACTIVITY_WINDOW_MS) {
+      const seconds = Math.floor(age / 1000)
+      return { value: 'Activo', detail: seconds < 5 ? `${topic} cambiando ahora` : `Último cambio hace ${seconds}s`, tone: 'good', active: true }
+    }
+    return { value: 'Sin actividad', detail: `Sin cambios por ${Math.floor(age / 60_000)} min`, tone: 'critical', active: false }
+  }, [broker.status, sample, lastChangedAt, now, topic])
+}
 
 function CardTitle({ eyebrow, title, detail, action }) {
   return (
@@ -108,11 +153,11 @@ function SetpointCard({ tank, point }) {
   )
 }
 
-function SummaryTile({ icon: Icon, label, value, detail, tone = 'navy' }) {
-  const tones = { navy: 'bg-navy-100 text-navy-600', good: 'bg-status-goodBg text-status-good', warning: 'bg-status-warningBg text-status-warning', live: 'bg-live-100 text-live-600' }
+function SummaryTile({ icon: Icon, label, value, detail, tone = 'navy', pulse = false }) {
+  const tones = { navy: 'bg-navy-100 text-navy-600', good: 'bg-status-goodBg text-status-good', warning: 'bg-status-warningBg text-status-warning', critical: 'bg-status-criticalBg text-status-critical', live: 'bg-live-100 text-live-600' }
   return (
     <article className="flex items-center gap-3 rounded-2xl border border-white/80 bg-white/90 p-4 shadow-card">
-      <span className={cx('flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl', tones[tone])}><Icon className="h-5 w-5" /></span>
+      <span className={cx('relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl', tones[tone])}><Icon className="h-5 w-5" />{pulse && <span className="absolute right-1.5 top-1.5 h-2 w-2 animate-ping rounded-full bg-current opacity-50" />}</span>
       <div className="min-w-0"><p className="truncate text-[9px] font-extrabold uppercase tracking-[0.16em] text-ink-400">{label}</p><p className="mt-0.5 truncate font-mono text-xl font-black text-navy-900">{value}</p><p className="truncate text-[10px] text-ink-400">{detail}</p></div>
     </article>
   )
@@ -121,10 +166,13 @@ function SummaryTile({ icon: Icon, label, value, detail, tone = 'navy' }) {
 export function DashboardOverview({ model, broker, alarmCount }) {
   const running = model.pumps.filter((pump) => pump.running).length
   const faults = model.pumps.filter((pump) => pump.fault).length
+  const carcamoPlc = usePlcActivity(broker, 'PACarcamo_Real_5')
+  const tanquePlc = usePlcActivity(broker, 'PATanque_Real_1')
   return (
     <div className="space-y-5 pb-8">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryTile icon={IconWifi} label="Comunicación" value={broker.status === 'connected' ? 'En línea' : 'Sin enlace'} detail={broker.statusMessage} tone={broker.status === 'connected' ? 'good' : 'warning'} />
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+        <SummaryTile icon={IconWifi} label="PLC · Cárcamo" value={carcamoPlc.value} detail={carcamoPlc.detail} tone={carcamoPlc.tone} pulse={carcamoPlc.active} />
+        <SummaryTile icon={IconWifi} label="PLC · Tanque superior" value={tanquePlc.value} detail={tanquePlc.detail} tone={tanquePlc.tone} pulse={tanquePlc.active} />
         <SummaryTile icon={IconDroplet} label="Nivel cárcamo" value={`${model.tanks.carcamo.level.toFixed(1)}%`} detail={`${model.tanks.carcamo.volume.toFixed(1)} m³ estimados`} tone="live" />
         <SummaryTile icon={IconGauge} label="Nivel superior" value={`${model.tanks.superior.level.toFixed(1)}%`} detail={`${model.tanks.superior.volume.toFixed(1)} m³ estimados`} tone="navy" />
         <SummaryTile icon={alarmCount ? IconAlertTriangle : IconActivity} label="Estado de equipos" value={`${running} / ${model.pumps.length}`} detail={faults ? `${faults} equipo(s) con falla` : alarmCount ? `${alarmCount} alarma(s) activa(s)` : 'Sin fallas reportadas'} tone={faults || alarmCount ? 'warning' : 'good'} />
