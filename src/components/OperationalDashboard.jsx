@@ -1,55 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
 import LevelHistoryChart from './LevelHistoryChart.jsx'
 import SetpointWidget from './canvas/widgets/SetpointWidget.jsx'
 import HistoryTableWidget from './canvas/widgets/HistoryTableWidget.jsx'
 import pumpPhoto from '../assets/pump-photo.png'
-import { IconActivity, IconAlertTriangle, IconDroplet, IconGauge, IconHistory, IconPump, IconWifi } from '../icons.jsx'
 
 const cx = (...classes) => classes.filter(Boolean).join(' ')
-const PLC_ACTIVITY_WINDOW_MS = 2 * 60 * 1000
-
-function lastRecordedChange(history = []) {
-  for (let index = history.length - 1; index > 0; index -= 1) {
-    if (Math.abs(Number(history[index].level) - Number(history[index - 1].level)) >= 0.01) return Number(history[index].t)
-  }
-  return null
-}
-
-function usePlcActivity(broker, topic) {
-  const sample = broker.topicValues?.[topic]
-  const history = broker.topicHistory?.[topic]
-  const previousValue = useRef()
-  const [lastChangedAt, setLastChangedAt] = useState(() => lastRecordedChange(history))
-  const [now, setNow] = useState(Date.now())
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 5_000)
-    return () => window.clearInterval(timer)
-  }, [])
-
-  useEffect(() => {
-    const value = Number(sample?.value)
-    if (!Number.isFinite(value)) return
-    if (previousValue.current !== undefined && Math.abs(value - previousValue.current) >= 0.01) {
-      setLastChangedAt(Number(sample.receivedAt) || Date.now())
-    } else if (previousValue.current === undefined) {
-      const recorded = lastRecordedChange(history)
-      if (recorded) setLastChangedAt(recorded)
-    }
-    previousValue.current = value
-  }, [sample?.value, sample?.receivedAt, history])
-
-  return useMemo(() => {
-    if (broker.status !== 'connected' || !sample) return { value: 'Sin enlace', detail: `Sin datos de ${topic}`, tone: 'critical', active: false }
-    if (!lastChangedAt) return { value: 'Sin variación', detail: `Esperando cambio en ${topic}`, tone: 'warning', active: false }
-    const age = Math.max(0, now - lastChangedAt)
-    if (age <= PLC_ACTIVITY_WINDOW_MS) {
-      const seconds = Math.floor(age / 1000)
-      return { value: 'Activo', detail: seconds < 5 ? `${topic} cambiando ahora` : `Último cambio hace ${seconds}s`, tone: 'good', active: true }
-    }
-    return { value: 'Sin actividad', detail: `Sin cambios por ${Math.floor(age / 60_000)} min`, tone: 'critical', active: false }
-  }, [broker.status, sample, lastChangedAt, now, topic])
-}
 
 function CardTitle({ eyebrow, title, detail, action }) {
   return (
@@ -100,7 +54,7 @@ function TankGauge({ tank, compact = false }) {
 function PumpStatus({ pump }) {
   const status = !pump.runningKnown ? 'Sin señal' : pump.fault ? 'Falla' : pump.running ? 'En marcha' : 'Detenida'
   return (
-    <article className={cx('relative overflow-hidden rounded-2xl border bg-white p-4 shadow-card transition', !pump.runningKnown ? 'border-status-warning/30' : pump.fault ? 'border-status-critical/30' : pump.running ? 'border-status-good/30' : 'border-ink-100')}>
+    <article className={cx('relative flex min-w-0 flex-col overflow-hidden rounded-[22px] border bg-white p-5 shadow-card transition', !pump.runningKnown ? 'border-status-warning/30' : pump.fault ? 'border-status-critical/30' : pump.running ? 'border-status-good/30' : 'border-ink-100')}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-ink-400">Equipo de bombeo</p>
@@ -110,36 +64,54 @@ function PumpStatus({ pump }) {
           <span className={cx('relative h-2 w-2 rounded-full bg-current', pump.running && 'after:absolute after:inset-0 after:animate-ping after:rounded-full after:bg-current')} />{status}
         </span>
       </div>
-      <div className="mt-3 flex items-center gap-4">
-        <div className="flex h-20 w-28 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-navy-50 to-white">
-          <img src={pumpPhoto} alt="Bomba centrífuga" className={cx('max-h-[72px] max-w-[105px] object-contain', !pump.running && 'opacity-80 saturate-[.8]')} />
+      <div className="mt-4 flex min-h-[132px] items-center justify-center rounded-2xl bg-gradient-to-br from-navy-50/80 via-white to-live-100/30 px-4 py-3">
+        <img src={pumpPhoto} alt="Bomba centrífuga" className={cx('max-h-[118px] w-auto max-w-[190px] object-contain', !pump.running && 'opacity-80 saturate-[.8]')} />
+      </div>
+      <div className="mt-4">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-ink-400">Selector actual</p>
+          <p className="truncate text-[10px] font-semibold text-ink-400">{!pump.runningKnown ? 'Lectura digital no recibida' : pump.fault ? 'Requiere revisión' : pump.running ? 'Motor operando' : 'Equipo en espera'}</p>
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.16em] text-ink-400">Selector actual</p>
-          <div className="grid grid-cols-3 gap-1 rounded-xl bg-navy-50 p-1">
-            {['MANUAL', 'OFF', 'AUTO'].map((mode) => <span key={mode} className={cx('rounded-lg px-1 py-2 text-center text-[9px] font-extrabold transition', pump.mode === mode ? 'bg-navy-600 text-white shadow-sm' : 'text-ink-400')}>{mode === 'MANUAL' ? 'MAN' : mode}</span>)}
-          </div>
-          <p className="mt-2 text-[10px] text-ink-400">{!pump.runningKnown ? 'Lectura digital vencida o no recibida' : pump.fault ? 'Requiere revisión del operador' : pump.running ? 'Motor energizado y operando' : 'Equipo disponible en espera'}</p>
+        <div className="grid grid-cols-3 gap-1.5 rounded-xl bg-navy-50 p-1.5">
+          {['MANUAL', 'OFF', 'AUTO'].map((mode) => <span key={mode} className={cx('rounded-lg px-2 py-2.5 text-center text-[10px] font-extrabold transition', pump.mode === mode ? 'bg-navy-600 text-white shadow-sm' : 'text-ink-400')}>{mode === 'MANUAL' ? 'MAN' : mode}</span>)}
         </div>
       </div>
     </article>
   )
 }
 
+function FlowConnector({ label }) {
+  return (
+    <div className="flex items-center justify-center py-1 xl:flex-col xl:py-0">
+      <div className="hidden w-full items-center xl:flex">
+        <span className="h-3 flex-1 rounded-l-full bg-gradient-to-b from-slate-200 via-slate-400 to-slate-200 shadow-sm" />
+        <span className="-ml-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-live-500 text-xl font-black text-white shadow-[0_8px_20px_-8px_rgba(15,179,204,.8)]">→</span>
+      </div>
+      <div className="flex flex-col items-center xl:hidden">
+        <span className="h-8 w-2.5 rounded-t-full bg-gradient-to-r from-slate-200 via-slate-400 to-slate-200" />
+        <span className="-mt-1 flex h-9 w-9 items-center justify-center rounded-full bg-live-500 text-lg font-black text-white shadow-sm">↓</span>
+      </div>
+      <p className="mt-2 whitespace-nowrap text-center text-[9px] font-extrabold uppercase tracking-[0.14em] text-live-600">{label}</p>
+    </div>
+  )
+}
+
 function ProcessLine({ tanks, pumps }) {
   const running = pumps.some((pump) => pump.running)
   return (
-    <section className="overflow-hidden rounded-[28px] border border-white/80 bg-white/80 p-4 shadow-card backdrop-blur sm:p-5">
-      <CardTitle eyebrow="Proceso en tiempo real" title="Sistema de bombeo Punta Azul" detail="Captación, impulsión y almacenamiento" action={<span className={cx('inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wide', running ? 'bg-status-goodBg text-status-good' : 'bg-navy-50 text-ink-400')}><span className={cx('h-2 w-2 rounded-full', running ? 'bg-status-good animate-pulse' : 'bg-ink-300')} />{running ? 'Flujo activo' : 'En espera'}</span>} />
-      <div className="relative mt-5 grid gap-4 lg:grid-cols-[minmax(220px,1fr)_minmax(320px,1.25fr)_minmax(220px,1fr)] lg:items-center">
+    <section className="overflow-hidden rounded-[28px] border border-white/80 bg-white/80 p-4 shadow-card backdrop-blur sm:p-6">
+      <CardTitle eyebrow="Proceso en tiempo real" title="Impulsión de agua" detail="El agua sale del cárcamo, pasa por las bombas y se envía al tanque superior" action={<span className={cx('inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wide', running ? 'bg-status-goodBg text-status-good' : 'bg-navy-50 text-ink-400')}><span className={cx('h-2 w-2 rounded-full', running ? 'bg-status-good animate-pulse' : 'bg-ink-300')} />{running ? 'Flujo activo' : 'En espera'}</span>} />
+      <div className="mt-6 grid items-stretch gap-4 xl:grid-cols-[minmax(190px,.75fr)_64px_minmax(360px,1.5fr)_64px_minmax(190px,.75fr)] 2xl:grid-cols-[minmax(240px,.8fr)_90px_minmax(520px,1.7fr)_90px_minmax(240px,.8fr)]">
         <TankGauge tank={tanks.carcamo} compact />
-        <div className="relative grid gap-3 sm:grid-cols-2 lg:block lg:min-h-[350px]">
-          <div className="process-pipe absolute left-[-11%] right-[-11%] top-1/2 hidden h-3 -translate-y-1/2 rounded-full lg:block" />
-          <div className="relative z-10 grid gap-3 lg:absolute lg:inset-x-3 lg:top-1/2 lg:-translate-y-1/2 lg:grid-cols-2">
-            {pumps.map((pump) => <PumpStatus key={pump.id} pump={pump} />)}
-          </div>
+        <FlowConnector label="Succión" />
+        <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+          {pumps.map((pump) => <PumpStatus key={pump.id} pump={pump} />)}
         </div>
+        <FlowConnector label="Impulsión" />
         <TankGauge tank={tanks.superior} compact />
+      </div>
+      <div className="mt-5 flex items-center justify-center gap-3 rounded-2xl bg-navy-50 px-4 py-3 text-center text-xs font-bold text-navy-600">
+        <span>Tanque cárcamo</span><span className="text-lg text-live-600">→</span><span>Bombas 1 y 2</span><span className="text-lg text-live-600">→</span><span>Tanque superior</span>
       </div>
     </section>
   )
@@ -153,52 +125,17 @@ function SetpointCard({ tank, point }) {
   )
 }
 
-function SummaryTile({ icon: Icon, label, value, detail, tone = 'navy', pulse = false }) {
-  const tones = { navy: 'bg-navy-100 text-navy-600', good: 'bg-status-goodBg text-status-good', warning: 'bg-status-warningBg text-status-warning', critical: 'bg-status-criticalBg text-status-critical', live: 'bg-live-100 text-live-600' }
-  return (
-    <article className="flex items-center gap-3 rounded-2xl border border-white/80 bg-white/90 p-4 shadow-card">
-      <span className={cx('relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl', tones[tone])}><Icon className="h-5 w-5" />{pulse && <span className="absolute right-1.5 top-1.5 h-2 w-2 animate-ping rounded-full bg-current opacity-50" />}</span>
-      <div className="min-w-0"><p className="truncate text-[9px] font-extrabold uppercase tracking-[0.16em] text-ink-400">{label}</p><p className="mt-0.5 truncate font-mono text-xl font-black text-navy-900">{value}</p><p className="truncate text-[10px] text-ink-400">{detail}</p></div>
-    </article>
-  )
-}
-
-export function DashboardOverview({ model, broker, alarmCount }) {
-  const running = model.pumps.filter((pump) => pump.running).length
-  const faults = model.pumps.filter((pump) => pump.fault).length
-  const carcamoPlc = usePlcActivity(broker, 'PACarcamo_Real_5')
-  const tanquePlc = usePlcActivity(broker, 'PATanque_Real_1')
+export function DashboardOverview({ model }) {
   return (
     <div className="space-y-5 pb-8">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
-        <SummaryTile icon={IconWifi} label="PLC · Cárcamo" value={carcamoPlc.value} detail={carcamoPlc.detail} tone={carcamoPlc.tone} pulse={carcamoPlc.active} />
-        <SummaryTile icon={IconWifi} label="PLC · Tanque superior" value={tanquePlc.value} detail={tanquePlc.detail} tone={tanquePlc.tone} pulse={tanquePlc.active} />
-        <SummaryTile icon={IconDroplet} label="Nivel cárcamo" value={`${model.tanks.carcamo.level.toFixed(1)}%`} detail={`${model.tanks.carcamo.volume.toFixed(1)} m³ estimados`} tone="live" />
-        <SummaryTile icon={IconGauge} label="Nivel superior" value={`${model.tanks.superior.level.toFixed(1)}%`} detail={`${model.tanks.superior.volume.toFixed(1)} m³ estimados`} tone="navy" />
-        <SummaryTile icon={alarmCount ? IconAlertTriangle : IconActivity} label="Estado de equipos" value={`${running} / ${model.pumps.length}`} detail={faults ? `${faults} equipo(s) con falla` : alarmCount ? `${alarmCount} alarma(s) activa(s)` : 'Sin fallas reportadas'} tone={faults || alarmCount ? 'warning' : 'good'} />
-      </div>
-
-      <div className="grid gap-5 2xl:grid-cols-[minmax(0,1.7fr)_minmax(380px,.8fr)]">
-        <ProcessLine tanks={model.tanks} pumps={model.pumps} />
-        <section className="rounded-[28px] border border-white/80 bg-white/75 p-4 shadow-card backdrop-blur sm:p-5">
-          <CardTitle eyebrow="Control de operación" title="Niveles de arranque y paro" detail="Cambios enviados al PLC con confirmación" />
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 2xl:grid-cols-1">
-            <SetpointCard tank={model.tanks.superior} point="start" />
-            <SetpointCard tank={model.tanks.superior} point="stop" />
-            <SetpointCard tank={model.tanks.carcamo} point="start" />
-            <SetpointCard tank={model.tanks.carcamo} point="stop" />
-          </div>
-        </section>
-      </div>
-
-      <section>
-        <div className="mb-3 flex items-end justify-between gap-3">
-          <CardTitle eyebrow="Tendencias" title="Lecturas recientes" detail="Histórico recibido y almacenado por MQTT" />
-          <span className="hidden items-center gap-2 rounded-full bg-white px-3 py-2 text-[10px] font-bold text-ink-400 shadow-sm sm:inline-flex"><IconHistory className="h-4 w-4" /> Muestreo cada 10 min</span>
-        </div>
-        <div className="grid gap-5 xl:grid-cols-2">
-          <div className="h-[390px]"><LevelHistoryChart telemetry={model.tanks.carcamo.telemetry} config={{ title: 'Nivel del tanque cárcamo', subtitle: 'Captación · lectura PACarcamo_Real_5' }} /></div>
-          <div className="h-[390px]"><LevelHistoryChart telemetry={model.tanks.superior.telemetry} config={{ title: 'Nivel del tanque superior', subtitle: 'Distribución · lectura PATanque_Real_1' }} /></div>
+      <ProcessLine tanks={model.tanks} pumps={model.pumps} />
+      <section className="rounded-[28px] border border-white/80 bg-white/75 p-4 shadow-card backdrop-blur sm:p-6">
+        <CardTitle eyebrow="Control de operación" title="Niveles de arranque y paro" detail="Cambios enviados al PLC con confirmación" />
+        <div className="mt-5 grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
+          <SetpointCard tank={model.tanks.superior} point="start" />
+          <SetpointCard tank={model.tanks.superior} point="stop" />
+          <SetpointCard tank={model.tanks.carcamo} point="start" />
+          <SetpointCard tank={model.tanks.carcamo} point="stop" />
         </div>
       </section>
     </div>
